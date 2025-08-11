@@ -24,7 +24,6 @@ public class SignService {
 
     /**
      * 사용자 존재 여부 확인.
-     * userService.existsById가 있으면 사용하고, 없으면 findById 예외 처리 방식으로 폴백.
      */
     public boolean isExistUserId(String userId) {
         return userService.existsById(userId);
