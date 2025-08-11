@@ -69,4 +69,9 @@ public class UserService {
         return userMapper.toDto(user);
     }
 
+
+    public boolean existsById(String userId) {
+        return userRepository.existsById(userId);
+    }
+
 }

@@ -2,19 +2,12 @@ package com.wan.framework.user.service;
 
 import com.wan.framework.user.dto.UserDTO;
 import com.wan.framework.user.exception.UserException;
-import com.wan.framework.user.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.util.Base64;
+import org.springframework.transaction.annotation.Transactional;
 
 import static com.wan.framework.user.constant.UserExceptionMessage.*;
 
@@ -23,85 +16,55 @@ import static com.wan.framework.user.constant.UserExceptionMessage.*;
 @RequiredArgsConstructor
 public class SignService {
 
-    @Value("${password.salt.size}")
-    private Integer saltSize;
-    @Value("${password.iteration}")
-    private String passwordIteration;
-
     private final UserService userService;
 
+    private final PasswordService passwordService;
 
-    private void validateHash(UserDTO userDTO) {
-        String password = userDTO.getPassword();
-        String salt = userDTO.getPasswordSalt();
-        if (password == null || salt == null) {
-            throw new UserException(FAIL_HASH_PASSWORD);
-        }
-    }
+    // ---------- User existence helper ----------
 
-    private String hashPassword(UserDTO userDTO) {
-        validateHash(userDTO);
-        String password = userDTO.getPassword();
-        int iteration = Integer.parseInt(passwordIteration);
-        String salt = userDTO.getPasswordSalt();
-        return PasswordUtil.hashPassword(password, salt, iteration);
-    }
-
-    private String generateSalt() {
-        try {
-            return Base64.getEncoder()
-                    .encodeToString(SecureRandom.getInstanceStrong().generateSeed(saltSize));
-        } catch (NoSuchAlgorithmException e) {
-            throw new UserException(FAIL_CREATE_SALT, e);
-        }
-
-    }
-
+    /**
+     * 사용자 존재 여부 확인.
+     * userService.existsById가 있으면 사용하고, 없으면 findById 예외 처리 방식으로 폴백.
+     */
     public boolean isExistUserId(String userId) {
-        try {
-            userService.findById(userId);
-        } catch (Exception e) {
-            return false;
-        }
-        return true;
+        return userService.existsById(userId);
     }
 
-    public boolean verifyUser(UserDTO inputDTO) {
-        UserDTO storedDTO = userService.findById(inputDTO.getUserId());
-        String rawPassword = inputDTO.getPassword();
-        String salt = storedDTO.getPasswordSalt();
-        int iteration = Integer.parseInt(passwordIteration);
-        String storedHashedPassword = storedDTO.getPassword();
+    // ---------- Core flows ----------
 
-        return PasswordUtil.verifyPassword(rawPassword, salt, iteration, storedHashedPassword);
-    }
-
-
-    private void saveUser(UserDTO userDTO) {
-        String salt = generateSalt();
-        String hashWord = hashPassword(
-                UserDTO.builder()
-                        .password(userDTO.getPassword())
-                        .passwordSalt(salt)
-                        .build()
-        );
-        userService.saveUser(
-                UserDTO.builder()
-                        .userId(userDTO.getUserId())
-                        .password(hashWord)
-                        .name(userDTO.getName())
-                        .passwordSalt(salt)
-                        .build()
-        );
-    }
-
+    /**
+     * 회원가입
+     */
+    @Transactional
     public void signUp(UserDTO userDTO) {
         if (isExistUserId(userDTO.getUserId())) {
             throw new UserException(USED_ID);
         }
-        saveUser(userDTO);
+
+        String saltBase64 = passwordService.generateSaltBase64();
+        String hashed = passwordService.hashPassword(userDTO.getPassword(), saltBase64);
+
+        UserDTO toSave = UserDTO.builder()
+                .userId(userDTO.getUserId())
+                .password(hashed)
+                .name(userDTO.getName())
+                .passwordSalt(saltBase64)
+                .build();
+
+        userService.saveUser(toSave);
     }
 
+    /**
+     * 로그인 검증 후 사용자 정보 반환 (비밀번호는 제거)
+     */
+    public UserDTO signIn(UserDTO userDTO) {
+        validateSignIn(userDTO);
+        return userService.findById(userDTO.getUserId()).removePass();
+    }
+
+    /**
+     * 로그인 검증용: id 존재 & password 일치 여부 확인
+     */
     private void validateSignIn(UserDTO userDTO) {
         validateId(userDTO.getUserId());
         validatePass(userDTO);
@@ -119,38 +82,43 @@ public class SignService {
         }
     }
 
-    public UserDTO signIn(UserDTO userDTO) {
-        validateSignIn(userDTO);
-        return userService.findById(userDTO.getUserId()).removePass();
-    }
-
-    /*
-    [로그인 보안 정책]
-    수정, 삭제시엔 비밀번호를 다시 입력받도록 한다.
-    또한 삭제시 현재 세션인 경우 세션에서 제거할수 있도록 dto를 리턴해준다.
+    /**
+     * 특정 사용자 비밀번호 검증 (입력값과 DB 비교)
      */
-    public UserDTO modifyUser(UserDTO userDTO) {
-        isExistUserId(userDTO.getUserId());
-        String salt = generateSalt();
-        String hashWord = hashPassword(
-                UserDTO.builder()
-                        .password(userDTO.getPassword())
-                        .passwordSalt(salt)
-                        .build()
-        );
-        userDTO.setPassword(hashWord);
-        userDTO.setPasswordSalt(salt);
-        return userService
-                .modifyUser(userDTO)
-                .removePass();
+    public boolean verifyUser(UserDTO inputDTO) {
+        UserDTO stored = userService.findById(inputDTO.getUserId());
+        String saltBase64 = stored.getPasswordSalt();
+        String storedHash = stored.getPassword();
+        return passwordService.verifyPassword(inputDTO.getPassword(), saltBase64, storedHash);
     }
 
+    /**
+     * 수정: 보안 정책에 따라 비밀번호 재입력(로그인 검증)을 요구. 이후 새 솔트 생성 및 저장.
+     */
+    @Transactional
+    public UserDTO modifyUser(UserDTO userDTO) {
+        // 보안: 수정 전 본인 확인
+        validateSignIn(userDTO);
+
+        String newSalt = passwordService.generateSaltBase64();
+        String newHash = passwordService.hashPassword(userDTO.getPassword(), newSalt);
+
+        userDTO.setPassword(newHash);
+        userDTO.setPasswordSalt(newSalt);
+
+        return userService.modifyUser(userDTO).removePass();
+    }
+
+    /**
+     * 삭제: 본인 확인 후 삭제 처리
+     */
+    @Transactional
     public UserDTO deleteUser(UserDTO userDTO) {
         validateSignIn(userDTO);
-        return userService
-                .deleteUser(userDTO)
-                .removePass();
+        return userService.deleteUser(userDTO).removePass();
     }
+
+    // ---------- 조회 ----------
 
     public Page<UserDTO> findAll(Pageable pageable) {
         return userService.findAll(pageable);
