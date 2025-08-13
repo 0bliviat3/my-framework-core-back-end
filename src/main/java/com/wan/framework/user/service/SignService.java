@@ -123,4 +123,8 @@ public class SignService {
         return userService.findAll(pageable);
     }
 
+    public UserDTO findById(String userId) {
+        return userService.findById(userId).removePass();
+    }
+
 }

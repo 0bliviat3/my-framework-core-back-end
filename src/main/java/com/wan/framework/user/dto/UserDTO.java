@@ -21,7 +21,7 @@ public class UserDTO {
     private String name;
     private DataStateCode dataCode;
     private String passwordSalt;
-    private String authLevel;
+    private String roles;
 
     public UserDTO removePass() {
         this.password = null;

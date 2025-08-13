@@ -1,5 +1,5 @@
 package com.wan.framework.base.constant;
 
 public enum AbleState {
-    ABLE, UNABLE;
+    ABLE, DISABLE;
 }

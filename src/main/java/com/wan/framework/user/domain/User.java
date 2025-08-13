@@ -6,6 +6,8 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+import static com.wan.framework.base.constant.DataStateCode.I;
+
 @Entity
 @Table(name = "t_user")
 @Setter
@@ -38,6 +40,17 @@ public class User {
     @Column(name = "password_salt")
     private String passwordSalt;
 
-    @Column(name = "auth_level")
-    private String authLevel;
+    @Column(name = "roles")
+    private String roles;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createTime = LocalDateTime.now();
+        this.dataCode = I;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.modifiedTime = LocalDateTime.now();
+    }
 }

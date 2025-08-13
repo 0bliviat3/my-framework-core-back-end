@@ -38,7 +38,7 @@ public class UserService {
 
     public Page<UserDTO> findAll(Pageable pageable) {
         Page<User> userPage =  userRepository.findAllByDataCodeNot(pageable, D);
-        return userPage.map(userMapper::toDto);
+        return userPage.map(it -> userMapper.toDto(it).removePass());
     }
 
     @Transactional
@@ -55,8 +55,6 @@ public class UserService {
         user.setPassword(password);
         user.setPasswordSalt(passwordSalt);
         user.setName(name);
-        user.setModifiedTime(LocalDateTime.now());
-        user.setDataCode(U);
         return userMapper.toDto(user);
     }
 

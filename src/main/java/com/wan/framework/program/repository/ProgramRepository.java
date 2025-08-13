@@ -10,10 +10,10 @@ import java.util.Optional;
 
 public interface ProgramRepository extends JpaRepository<Program, String> {
 
-    Optional<Program> findByProgramIdAndDataCodeNot(Long programId, DataStateCode dataStateCode);
-    Page<Program> findAllByDataCodeNot(Pageable pageable, DataStateCode dataStateCode);
+    Optional<Program> findByIdAndDataStateCodeNot(Long id, DataStateCode dataStateCode);
+    Page<Program> findAllByDataStateCodeNot(Pageable pageable, DataStateCode dataStateCode);
 
-    boolean existsByProgramNameAndDataCodeNot(String programName, DataStateCode dataCode);
+    boolean existsByNameAndDataStateCodeNot(String name, DataStateCode dataStateCode);
 
-    boolean existsByProgramNameAndIdNotAndDataCodeNot(String programName, Long id, DataStateCode dataCode);
+    boolean existsByNameAndIdNotAndDataStateCodeNot(String name, Long id, DataStateCode dataStateCode);
 }

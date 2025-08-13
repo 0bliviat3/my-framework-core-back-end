@@ -26,7 +26,7 @@ public class ProgramService {
 
     @Transactional
     public ProgramDTO saveProgram(ProgramDTO programDTO) {
-        if (programRepository.existsByProgramNameAndDataCodeNot(programDTO.getName(), D)) {
+        if (programRepository.existsByNameAndDataStateCodeNot(programDTO.getName(), D)) {
             throw new DuplicateKeyException(DUPLICATED_PROGRAM_NAME.getMessage());
         }
         Program program = programMapper.toEntity(programDTO);
@@ -35,22 +35,22 @@ public class ProgramService {
     }
 
     public ProgramDTO findById(Long programId) {
-        Program program = programRepository.findByProgramIdAndDataCodeNot(programId, D)
+        Program program = programRepository.findByIdAndDataStateCodeNot(programId, D)
                 .orElseThrow(EntityExistsException::new);
         return programMapper.toDTO(program);
     }
 
     public Page<ProgramDTO> findAll(Pageable pageable) {
-        Page<Program> programPage = programRepository.findAllByDataCodeNot(pageable, D);
+        Page<Program> programPage = programRepository.findAllByDataStateCodeNot(pageable, D);
         return programPage.map(programMapper::toDTO);
     }
 
     @Transactional
     public ProgramDTO modifyProgram(ProgramDTO programDTO) {
-        if (programRepository.existsByProgramNameAndIdNotAndDataCodeNot(programDTO.getName(), programDTO.getId(), D)) {
+        if (programRepository.existsByNameAndIdNotAndDataStateCodeNot(programDTO.getName(), programDTO.getId(), D)) {
             throw new DuplicateKeyException(DUPLICATED_PROGRAM_NAME.getMessage());
         }
-        Program program = programRepository.findByProgramIdAndDataCodeNot(programDTO.getId(), D)
+        Program program = programRepository.findByIdAndDataStateCodeNot(programDTO.getId(), D)
                 .orElseThrow(EntityNotFoundException::new);
         programMapper.updateEntityFromDto(programDTO, program);
         program.setDataStateCode(U);
@@ -59,7 +59,7 @@ public class ProgramService {
 
     @Transactional
     public ProgramDTO deleteProgram(Long programId) {
-        Program program = programRepository.findByProgramIdAndDataCodeNot(programId, D)
+        Program program = programRepository.findByIdAndDataStateCodeNot(programId, D)
                 .orElseThrow(EntityNotFoundException::new);
         program.setDataStateCode(D);
         return programMapper.toDTO(program);
@@ -71,7 +71,7 @@ public class ProgramService {
     }
 
     public boolean existsByName(String programName) {
-        return programRepository.existsByProgramNameAndDataCodeNot(programName, D);
+        return programRepository.existsByNameAndDataStateCodeNot(programName, D);
     }
 
 }

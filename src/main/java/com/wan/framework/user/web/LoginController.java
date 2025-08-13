@@ -28,6 +28,7 @@ public class LoginController {
 
     @PostMapping("/sign-in")
     public ResponseEntity<UserDTO> signIn(@RequestBody UserDTO userDTO, HttpSession session, HttpServletResponse response) {
+        log.info("userDTO: {}", userDTO);
         UserDTO user = signService.signIn(userDTO);
         session.setAttribute("userId", user.getUserId());
         session.setAttribute("userName", user.getName());
@@ -35,6 +36,7 @@ public class LoginController {
 
         user.setPassword(null);
         user.setPasswordSalt(null);
+        log.info("로그인 성공: {}", user.getUserId());
         return ResponseEntity.ok(user);
     }
 
@@ -81,8 +83,9 @@ public class LoginController {
     }
 
     @GetMapping("/user")
-    public boolean isExistUser(String userId) {
-        return signService.isExistUserId(userId);
+    public UserDTO isExistUser(String userId) {
+        log.info("params: {}", userId);
+        return signService.findById(userId);
     }
 
 }
