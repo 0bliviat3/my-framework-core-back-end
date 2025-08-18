@@ -14,5 +14,7 @@ public interface ProgramMapper {
     Program toEntity(ProgramDTO programDTO);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     void updateEntityFromDto(ProgramDTO programDTO, @MappingTarget Program entity);
 }

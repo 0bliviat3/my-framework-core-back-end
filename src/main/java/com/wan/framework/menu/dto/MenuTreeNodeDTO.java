@@ -1,7 +1,5 @@
 package com.wan.framework.menu.dto;
 
-import com.wan.framework.base.constant.AbleState;
-import com.wan.framework.base.constant.DataStateCode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 

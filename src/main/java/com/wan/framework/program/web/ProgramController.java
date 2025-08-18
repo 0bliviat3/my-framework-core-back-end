@@ -29,8 +29,8 @@ public class ProgramController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteProgram(@PathVariable Long programId) {
-        ProgramDTO deletedProgramDTO = programService.deleteProgram(programId);
+    public ResponseEntity<String> deleteProgram(@PathVariable Long id) {
+        ProgramDTO deletedProgramDTO = programService.deleteProgram(id);
         return ResponseEntity.ok("프로그램 삭제 성공");
     }
 

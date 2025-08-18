@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -66,8 +67,29 @@ public class MenuService {
      * 모든 메뉴 조회
      */
     @Transactional(readOnly = true)
-    public MenuTreeNodeDTO findAll() {
+    public List<MenuDTO> findAll() {
+        return menuRepository.findAllByDataStateCodeNot(D)
+                .stream()
+                .map(menuMapper::toDTO).toList();
+    }
+
+    /**
+     * 모든 메뉴 조회
+     */
+    @Transactional(readOnly = true)
+    public MenuTreeNodeDTO findAllTree() {
         Map<Long, MenuTreeNodeDTO> menuTreeNodeDTOs = menuRepository.findAllByDataStateCodeNot(D).stream()
+                .map(it -> new MenuTreeNodeDTO(menuMapper.toDTO(it), null))
+                .collect(Collectors.toMap(menuTreeNodeDTO -> menuTreeNodeDTO.getMenuDTO().getId(), dto -> dto));
+        return new MenuTree(menuTreeNodeDTOs).getMenus();
+    }
+
+    /**
+     * 권한별 메뉴 조회
+     */
+    @Transactional(readOnly = true)
+    public MenuTreeNodeDTO findAllTreeByRoles(String roles) {
+        Map<Long, MenuTreeNodeDTO> menuTreeNodeDTOs = menuRepository.findAllByDataStateCodeNotAndRoles(D, roles).stream()
                 .map(it -> new MenuTreeNodeDTO(menuMapper.toDTO(it), null))
                 .collect(Collectors.toMap(menuTreeNodeDTO -> menuTreeNodeDTO.getMenuDTO().getId(), dto -> dto));
         return new MenuTree(menuTreeNodeDTOs).getMenus();

@@ -32,6 +32,7 @@ public class LoginController {
         UserDTO user = signService.signIn(userDTO);
         session.setAttribute("userId", user.getUserId());
         session.setAttribute("userName", user.getName());
+        session.setAttribute("roles", user.getRoles());
         setCookies(user, response);
 
         user.setPassword(null);

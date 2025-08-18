@@ -5,6 +5,7 @@ import com.wan.framework.base.constant.DataStateCode;
 import com.wan.framework.program.domain.Program;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
 
@@ -31,12 +32,20 @@ public class Menu {
     private Menu parent;
 
     @ManyToOne
-    @JoinColumn(name = "program_id", referencedColumnName = "pid")
+    @JoinColumn(name = "program_id", referencedColumnName = "program_id")
     private Program program;
 
     @Column(name = "menu_name", nullable = false, length = 100)
     private String name;
+
+    @Column(name = "type", nullable = false)
     private String type;
+
+    @Column(name = "roles", nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'guest'")
+    private String roles;
+
+    @Column(name = "icon")
+    private String icon;
 
     @Column(name = "data_code", nullable = false)
     @Enumerated(EnumType.STRING)

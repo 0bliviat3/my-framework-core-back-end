@@ -66,7 +66,7 @@ public class ProgramService {
     }
 
 
-    public boolean existsById(String programId) {
+    public boolean existsById(Long programId) {
         return programRepository.existsById(programId);
     }
 

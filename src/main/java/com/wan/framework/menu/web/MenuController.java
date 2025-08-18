@@ -3,9 +3,13 @@ package com.wan.framework.menu.web;
 import com.wan.framework.menu.dto.MenuDTO;
 import com.wan.framework.menu.dto.MenuTreeNodeDTO;
 import com.wan.framework.menu.service.MenuService;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/menus")
@@ -32,12 +36,22 @@ public class MenuController {
         return ResponseEntity.ok(menu);
     }
 
+    @GetMapping
+    public ResponseEntity<List<MenuDTO>> getMenu() {
+        return ResponseEntity.ok(menuService.findAll());
+    }
+
     /**
      * 모든 메뉴 트리 조회
      */
     @GetMapping("/tree")
-    public ResponseEntity<MenuTreeNodeDTO> getMenuTree() {
-        MenuTreeNodeDTO tree = menuService.findAll();
+    public ResponseEntity<MenuTreeNodeDTO> getMenuTree(HttpSession session) {
+        String roles = (String) Optional.ofNullable(session.getAttribute("roles")).orElse("guest");
+        if (roles.equals("admin")) {
+            MenuTreeNodeDTO tree = menuService.findAllTree();
+            return ResponseEntity.ok(tree);
+        }
+        MenuTreeNodeDTO tree = menuService.findAllTreeByRoles(roles);
         return ResponseEntity.ok(tree);
     }
 
