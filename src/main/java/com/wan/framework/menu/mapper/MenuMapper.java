@@ -10,6 +10,7 @@ public interface MenuMapper {
     @Mapping(target = "frontPath", source = "program.frontPath")
     @Mapping(target = "path", source = "program.path")
     @Mapping(target = "programId", source = "program.id")
+    @Mapping(target = "programName", source = "program.name")
     @Mapping(target = "parentId", source = "parent.id")
     MenuDTO toDTO(Menu menu);
 

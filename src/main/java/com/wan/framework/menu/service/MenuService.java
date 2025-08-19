@@ -10,6 +10,7 @@ import com.wan.framework.program.domain.Program;
 import com.wan.framework.program.repository.ProgramRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +19,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.wan.framework.base.constant.DataStateCode.D;
+import static com.wan.framework.base.constant.DataStateCode.U;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -122,12 +125,15 @@ public class MenuService {
             menu.setProgram(null);
         }
 
+        menu.setDataStateCode(U);
+
         return menuMapper.toDTO(menu);
     }
 
     /**
      * 메뉴 삭제
      */
+    @Transactional
     public void deleteMenu(Long id) {
         Menu menu = menuRepository.findByIdAndDataStateCodeNot(id, D)
                 .orElseThrow(EntityNotFoundException::new);

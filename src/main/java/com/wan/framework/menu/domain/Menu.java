@@ -71,6 +71,5 @@ public class Menu {
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
-        this.dataStateCode = U;
     }
 }

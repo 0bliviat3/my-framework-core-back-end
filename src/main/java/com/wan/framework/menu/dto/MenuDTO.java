@@ -13,6 +13,7 @@ public class MenuDTO {
     private Long parentId;
     private Long programId;
     private String name;
+    private String programName;
     private String type;
     private String roles;
     private String icon;
