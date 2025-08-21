@@ -2,6 +2,7 @@ package com.wan.framework.program.service;
 
 import com.wan.framework.program.domain.Program;
 import com.wan.framework.program.dto.ProgramDTO;
+import com.wan.framework.program.exception.ProgramException;
 import com.wan.framework.program.mapper.ProgramMapper;
 import com.wan.framework.program.repository.ProgramRepository;
 import jakarta.persistence.EntityExistsException;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import static com.wan.framework.base.constant.DataStateCode.D;
 import static com.wan.framework.base.constant.DataStateCode.U;
 import static com.wan.framework.program.constant.ProgramExceptionMessage.DUPLICATED_PROGRAM_NAME;
+import static com.wan.framework.program.constant.ProgramExceptionMessage.NOT_FOUND_PROGRAM;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +29,7 @@ public class ProgramService {
     @Transactional
     public ProgramDTO saveProgram(ProgramDTO programDTO) {
         if (programRepository.existsByNameAndDataStateCodeNot(programDTO.getName(), D)) {
-            throw new DuplicateKeyException(DUPLICATED_PROGRAM_NAME.getMessage());
+            throw new ProgramException(DUPLICATED_PROGRAM_NAME);
         }
         Program program = programMapper.toEntity(programDTO);
         program = programRepository.save(program);
@@ -36,7 +38,7 @@ public class ProgramService {
 
     public ProgramDTO findById(Long programId) {
         Program program = programRepository.findByIdAndDataStateCodeNot(programId, D)
-                .orElseThrow(EntityExistsException::new);
+                .orElseThrow(() -> new ProgramException(NOT_FOUND_PROGRAM));
         return programMapper.toDTO(program);
     }
 
@@ -48,10 +50,10 @@ public class ProgramService {
     @Transactional
     public ProgramDTO modifyProgram(ProgramDTO programDTO) {
         if (programRepository.existsByNameAndIdNotAndDataStateCodeNot(programDTO.getName(), programDTO.getId(), D)) {
-            throw new DuplicateKeyException(DUPLICATED_PROGRAM_NAME.getMessage());
+            throw new ProgramException(DUPLICATED_PROGRAM_NAME);
         }
         Program program = programRepository.findByIdAndDataStateCodeNot(programDTO.getId(), D)
-                .orElseThrow(EntityNotFoundException::new);
+                .orElseThrow(() -> new ProgramException(NOT_FOUND_PROGRAM));
         programMapper.updateEntityFromDto(programDTO, program);
         program.setDataStateCode(U);
         return programMapper.toDTO(program);
@@ -60,7 +62,7 @@ public class ProgramService {
     @Transactional
     public ProgramDTO deleteProgram(Long programId) {
         Program program = programRepository.findByIdAndDataStateCodeNot(programId, D)
-                .orElseThrow(EntityNotFoundException::new);
+                .orElseThrow(() -> new ProgramException(NOT_FOUND_PROGRAM));
         program.setDataStateCode(D);
         return programMapper.toDTO(program);
     }

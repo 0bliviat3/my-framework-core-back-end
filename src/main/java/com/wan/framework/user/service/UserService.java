@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static com.wan.framework.base.constant.DataStateCode.D;
-import static com.wan.framework.base.constant.DataStateCode.U;
 
 @Service
 @RequiredArgsConstructor

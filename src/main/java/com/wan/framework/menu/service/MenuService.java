@@ -4,11 +4,11 @@ import com.wan.framework.menu.domain.Menu;
 import com.wan.framework.menu.domain.MenuTree;
 import com.wan.framework.menu.dto.MenuDTO;
 import com.wan.framework.menu.dto.MenuTreeNodeDTO;
+import com.wan.framework.menu.exception.MenuException;
 import com.wan.framework.menu.mapper.MenuMapper;
 import com.wan.framework.menu.repositoty.MenuRepository;
 import com.wan.framework.program.domain.Program;
 import com.wan.framework.program.repository.ProgramRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 
 import static com.wan.framework.base.constant.DataStateCode.D;
 import static com.wan.framework.base.constant.DataStateCode.U;
+import static com.wan.framework.menu.constant.MenuExceptionMessage.*;
 
 @Slf4j
 @Service
@@ -27,7 +28,6 @@ import static com.wan.framework.base.constant.DataStateCode.U;
 @Transactional
 public class MenuService {
 
-    //TODO: runtime exception -> 예외 정의해서 예외 공통 처리 할것
     private final MenuRepository menuRepository;
     private final ProgramRepository programRepository; // Program 매핑용
     private final MenuMapper menuMapper;
@@ -41,14 +41,14 @@ public class MenuService {
         // parent 설정 (nullable)
         if (request.getParentId() != null) {
             Menu parent = menuRepository.findByIdAndDataStateCodeNot(request.getParentId(), D)
-                    .orElseThrow(() -> new RuntimeException("Parent menu not found"));
+                    .orElseThrow(() -> new MenuException(NOT_FOUND_PARENT));
             menu.setParent(parent);
         }
 
         // program 설정 (nullable)
         if (request.getProgramId() != null) {
             Program program = programRepository.findByIdAndDataStateCodeNot(request.getProgramId(), D)
-                    .orElseThrow(() -> new RuntimeException("Program not found"));
+                    .orElseThrow(() -> new MenuException(NOT_FOUND_PROGRAM));
             menu.setProgram(program);
         }
 
@@ -62,7 +62,7 @@ public class MenuService {
     @Transactional(readOnly = true)
     public MenuDTO getMenu(Long id) {
         Menu menu = menuRepository.findByIdAndDataStateCodeNot(id, D)
-                .orElseThrow(() -> new RuntimeException("Menu not found"));
+                .orElseThrow(() -> new MenuException(NOT_FOUND_MENU));
         return menuMapper.toDTO(menu);
     }
 
@@ -103,14 +103,14 @@ public class MenuService {
      */
     public MenuDTO updateMenu(Long id, MenuDTO request) {
         Menu menu = menuRepository.findByIdAndDataStateCodeNot(id, D)
-                .orElseThrow(() -> new RuntimeException("Menu not found"));
+                .orElseThrow(() -> new MenuException(NOT_FOUND_MENU));
 
         menuMapper.updateEntityFromDto(request, menu);
 
         // parent 변경 (nullable)
         if (request.getParentId() != null) {
             Menu parent = menuRepository.findByIdAndDataStateCodeNot(request.getParentId(), D)
-                    .orElseThrow(() -> new RuntimeException("Parent menu not found"));
+                    .orElseThrow(() -> new MenuException(NOT_FOUND_PARENT));
             menu.setParent(parent);
         } else {
             menu.setParent(null);
@@ -119,7 +119,7 @@ public class MenuService {
         // program 변경 (nullable)
         if (request.getProgramId() != null) {
             Program program = programRepository.findByIdAndDataStateCodeNot(request.getProgramId(), D)
-                    .orElseThrow(() -> new RuntimeException("Program not found"));
+                    .orElseThrow(() -> new MenuException(NOT_FOUND_PROGRAM));
             menu.setProgram(program);
         } else {
             menu.setProgram(null);
@@ -136,7 +136,7 @@ public class MenuService {
     @Transactional
     public void deleteMenu(Long id) {
         Menu menu = menuRepository.findByIdAndDataStateCodeNot(id, D)
-                .orElseThrow(EntityNotFoundException::new);
+                .orElseThrow(() -> new MenuException(NOT_FOUND_MENU));
         menu.setDataStateCode(D);
     }
 }
