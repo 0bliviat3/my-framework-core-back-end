@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/boards")
+@RequestMapping("/board-metas")
 public class BoardMetaController {
 
     private final BoardMetaService boardMetaService;
@@ -19,6 +19,7 @@ public class BoardMetaController {
     /** 게시판 생성 */
     @PostMapping
     public BoardMetaDTO createBoard(@RequestBody BoardMetaDTO boardMetaDTO) {
+        log.debug("boardMetaDTO: {}", boardMetaDTO);
         return boardMetaService.saveBoardMeta(boardMetaDTO);
     }
 

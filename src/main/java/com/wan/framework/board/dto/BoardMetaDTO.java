@@ -2,10 +2,6 @@ package com.wan.framework.board.dto;
 
 import com.wan.framework.base.constant.AbleState;
 import com.wan.framework.base.constant.DataStateCode;
-import jakarta.persistence.Column;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Lob;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
