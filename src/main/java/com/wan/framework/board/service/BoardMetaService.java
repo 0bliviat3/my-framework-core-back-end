@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import static com.wan.framework.base.constant.DataStateCode.D;
 import static com.wan.framework.base.constant.DataStateCode.U;
 import static com.wan.framework.board.constant.BoardExceptionMessage.DUPLICATED_TITLE;
-import static com.wan.framework.board.constant.BoardExceptionMessage.NOT_FOUND_ID;
+import static com.wan.framework.board.constant.BoardExceptionMessage.NOT_FOUND_META;
 
 @Slf4j
 @Service
@@ -38,7 +38,7 @@ public class BoardMetaService {
     @Transactional(readOnly = true)
     public BoardMetaDTO findById(Long id) {
         BoardMeta meta = repository.findByIdAndDataStateCodeNot(id, D)
-                .orElseThrow(() -> new BoardException(NOT_FOUND_ID));
+                .orElseThrow(() -> new BoardException(NOT_FOUND_META));
         return mapper.toDTO(meta);
     }
 
@@ -51,17 +51,39 @@ public class BoardMetaService {
     @Transactional
     public BoardMetaDTO modifyBoardMeta(BoardMetaDTO boardMetaDTO) {
         BoardMeta meta = repository.findByIdAndDataStateCodeNot(boardMetaDTO.getId(), D)
-                .orElseThrow(() -> new BoardException(NOT_FOUND_ID));
+                .orElseThrow(() -> new BoardException(NOT_FOUND_META));
         mapper.updateEntityFromDto(boardMetaDTO, meta);
         meta.setDataStateCode(U);
         return mapper.toDTO(meta);
     }
 
     @Transactional
-    public void deleteProgram(Long id) {
+    public void deleteBoardMeta(Long id) {
         BoardMeta meta = repository.findByIdAndDataStateCodeNot(id, D)
-                .orElseThrow(() -> new BoardException(NOT_FOUND_ID));
+                .orElseThrow(() -> new BoardException(NOT_FOUND_META));
         meta.setDataStateCode(D);
+    }
+
+    @Transactional
+    public BoardMetaDTO cloneBoardMeta(Long id, String newTitle) {
+        BoardMeta original = repository.findByIdAndDataStateCodeNot(id, D)
+                .orElseThrow(() -> new BoardException(NOT_FOUND_META));
+
+        if (repository.existsByTitleAndDataStateCodeNot(newTitle, D)) {
+            throw new BoardException(DUPLICATED_TITLE);
+        }
+
+        BoardMeta cloned = BoardMeta.builder()
+                .title(newTitle)
+                .description(original.getDescription())
+                .formDefinitionJson(original.getFormDefinitionJson())
+                .roles(original.getRoles())
+                .useComment(original.getUseComment())
+                .createdBy(original.getCreatedBy())
+                .ableState(original.getAbleState())
+                .build();
+
+        return mapper.toDTO(repository.save(cloned));
     }
 
 }
