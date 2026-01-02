@@ -21,8 +21,7 @@ public class FrameworkWebMVCConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(frameworkInterceptor)
                 .addPathPatterns("/**")
-                .excludePathPatterns("/**");
-        //.excludePathPatterns("/sign-up", "/api-docs", "/swagger-ui/*", "/api/**", "/js/**", "/css/**");
+                .excludePathPatterns("/sign-up", "/api-docs", "/swagger-ui/**", "/v3/api-docs/**", "/js/**", "/css/**");
     }
 
     @Override
