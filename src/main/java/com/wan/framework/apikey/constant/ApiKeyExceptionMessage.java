@@ -1,8 +1,9 @@
 package com.wan.framework.apikey.constant;
 
-import com.wan.framework.base.exception.ExceptionConst;
+import lombok.Getter;
 
-public enum ApiKeyExceptionMessage implements ExceptionConst {
+@Getter
+public enum ApiKeyExceptionMessage {
     // ApiKey
     NOT_FOUND_API_KEY("APIKEY_001", "API Key를 찾을 수 없습니다."),
     INVALID_API_KEY("APIKEY_002", "유효하지 않은 API Key입니다."),
@@ -27,13 +28,4 @@ public enum ApiKeyExceptionMessage implements ExceptionConst {
         this.message = message;
     }
 
-    @Override
-    public String getCode() {
-        return code;
-    }
-
-    @Override
-    public String getMessage() {
-        return message;
-    }
 }
