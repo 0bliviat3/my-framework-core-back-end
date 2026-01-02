@@ -1,8 +1,11 @@
 package com.wan.framework.board.constant;
 
-import com.wan.framework.base.exception.ExceptionConst;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
-public enum BoardExceptionMessage implements ExceptionConst {
+@Getter
+@AllArgsConstructor
+public enum BoardExceptionMessage {
     // BoardMeta
     DUPLICATED_TITLE("BOARD_001", "중복된 게시판 이름입니다."),
     NOT_FOUND_META("BOARD_002", "존재하지 않는 게시판입니다."),
@@ -37,18 +40,4 @@ public enum BoardExceptionMessage implements ExceptionConst {
     private final String code;
     private final String message;
 
-    BoardExceptionMessage(String code, String message) {
-        this.code = code;
-        this.message = message;
-    }
-
-    @Override
-    public String getCode() {
-        return code;
-    }
-
-    @Override
-    public String getMessage() {
-        return message;
-    }
 }

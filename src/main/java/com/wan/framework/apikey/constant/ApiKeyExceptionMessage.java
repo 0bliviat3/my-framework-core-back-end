@@ -1,8 +1,10 @@
 package com.wan.framework.apikey.constant;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter
+@AllArgsConstructor
 public enum ApiKeyExceptionMessage {
     // ApiKey
     NOT_FOUND_API_KEY("APIKEY_001", "API Key를 찾을 수 없습니다."),
@@ -22,10 +24,5 @@ public enum ApiKeyExceptionMessage {
 
     private final String code;
     private final String message;
-
-    ApiKeyExceptionMessage(String code, String message) {
-        this.code = code;
-        this.message = message;
-    }
 
 }
