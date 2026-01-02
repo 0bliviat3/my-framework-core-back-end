@@ -1,6 +1,6 @@
 # Framework Core Back-end 구현 현황
 
-> 최종 업데이트: 2025-12-31
+> 최종 업데이트: 2026-01-02
 
 ## 📋 목차
 - [1. 프로젝트 개요](#1-프로젝트-개요)
@@ -228,7 +228,97 @@ Spring Boot 기반의 엔터프라이즈 프레임워크 백엔드 시스템으�
 
 ---
 
-### 3.6 Board 모듈 (동적 게시판) ⭐ NEW
+### 3.6 API Key 모듈 (API 키 관리) ⭐ NEW
+
+#### ✅ 구현 파일 (총 21개)
+
+**Domain (3개)**
+- `ApiKey.java` - API Key 엔티티 (SHA-256 해싱, 만료일, 활성 상태)
+- `ApiKeyPermission.java` - API Key 권한 매핑
+- `ApiKeyUsageHistory.java` - API Key 사용 이력
+
+**DTO (3개)**
+- `ApiKeyDTO.java` - API Key DTO (rawApiKey, permissions 포함)
+- `ApiKeyPermissionDTO.java` - 권한 DTO
+- `ApiKeyUsageHistoryDTO.java` - 사용 이력 DTO
+
+**Repository (3개)**
+- `ApiKeyRepository.java` - API Key Repository
+- `ApiKeyPermissionRepository.java` - 권한 Repository
+- `ApiKeyUsageHistoryRepository.java` - 사용 이력 Repository
+
+**Service (2개)**
+- `ApiKeyService.java` - API Key 생성/검증/권한 관리
+- `ApiKeyUsageHistoryService.java` - 사용 이력 조회/통계
+
+**Controller (2개)**
+- `ApiKeyController.java` - API Key 관리 API
+- `ApiKeyUsageHistoryController.java` - 사용 이력 API
+
+**Mapper (3개)**
+- `ApiKeyMapper.java` - Entity ↔ DTO 변환
+- `ApiKeyPermissionMapper.java` - 권한 매핑
+- `ApiKeyUsageHistoryMapper.java` - 사용 이력 매핑
+
+**Config & Interceptor**
+- `ApiKeyWebConfig.java` - Bearer 인증 인터셉터 설정
+- `BearerAuthenticationInterceptor.java` - Authorization 헤더 검증
+
+**Util**
+- `ApiKeyGenerator.java` - SecureRandom 기반 API Key 생성
+
+**Exception**
+- `ApiKeyException.java` - API Key 관련 예외
+- `ApiKeyExceptionMessage.java` - 예외 메시지 (9개 상수)
+
+**Test (2개)**
+- `ApiKeyServiceTest.java` - API Key 서비스 테스트
+- `ApiKeyGeneratorTest.java` - Key 생성기 테스트
+
+#### 📋 API Key 모듈 상세 기능
+
+**1. API Key 생성 및 관리**
+- ✅ SecureRandom 기반 64자리 API Key 생성
+- ✅ SHA-256 해싱으로 안전한 저장
+- ✅ API Key Prefix (앞 8자) 저장으로 식별 지원
+- ✅ 만료일 설정 (expiredAt)
+- ✅ 활성/비활성 상태 관리 (AbleState)
+- ✅ 논리적 삭제 (DataStateCode)
+- ✅ 사용 횟수 자동 카운트
+- ✅ 마지막 사용 시각 기록
+
+**2. 권한 관리 (ApiKeyPermission)**
+- ✅ API Key별 다중 권한 매핑
+- ✅ 권한 추가/삭제
+- ✅ 권한 존재 여부 확인
+- ✅ 중복 권한 방지
+
+**3. 사용 이력 추적 (ApiKeyUsageHistory)**
+- ✅ 요청 URI, HTTP Method 기록
+- ✅ IP 주소, User Agent 저장
+- ✅ 성공/실패 여부 (isSuccess)
+- ✅ 에러 메시지 기록
+- ✅ 사용 시각 자동 기록
+- ✅ 기간별 이력 조회
+- ✅ 성공/실패 통계
+
+**4. Bearer Token 인증**
+- ✅ Authorization 헤더 검증
+- ✅ Bearer {token} 형식 파싱
+- ✅ API Key 유효성 검증 (존재, 활성, 만료)
+- ✅ HTTP 인터셉터로 자동 인증
+- ✅ 사용 이력 자동 기록
+
+**5. 보안 기능**
+- ✅ API Key는 생성 시 한 번만 반환 (rawApiKey)
+- ✅ DB에는 SHA-256 해시값만 저장
+- ✅ API Key Prefix로 부분 식별 가능
+- ✅ 만료된 키 자동 차단
+- ✅ 비활성화된 키 차단
+
+---
+
+### 3.7 Board 모듈 (동적 게시판)
 
 #### ✅ 구현 파일 (총 48개)
 
@@ -381,6 +471,20 @@ com.wan.framework
 ├── program/                 # 프로그램 모듈
 ├── menu/                    # 메뉴 모듈
 ├── history/                 # 히스토리 모듈
+│
+├── apikey/                  # API Key 모듈
+│   ├── domain/             # 3개 엔티티
+│   ├── dto/                # 3개 DTO
+│   ├── repository/         # 3개 Repository
+│   ├── service/            # 2개 Service
+│   ├── web/                # 2개 Controller
+│   ├── mapper/             # 3개 Mapper
+│   ├── config/             # Web 설정
+│   ├── interceptor/        # Bearer 인증
+│   ├── util/               # API Key 생성기
+│   ├── exception/          # 예외
+│   └── constant/           # 상수
+│
 └── board/                   # 게시판 모듈
     ├── domain/             # 6개 엔티티
     ├── dto/                # 6개 DTO
@@ -435,7 +539,7 @@ com.wan.framework
 
 ## 5. 데이터베이스 스키마
 
-### 5.1 테이블 목록 (총 12개)
+### 5.1 테이블 목록 (총 15개)
 
 | 테이블명 | 설명 | 주요 컬럼 |
 |----------|------|-----------|
@@ -443,6 +547,9 @@ com.wan.framework
 | `t_program` | 프로그램 | id(PK), name, front_path, api_path, api_key |
 | `t_menu` | 메뉴 | id(PK), name, type, icon, parent_id(FK), program_id(FK) |
 | `t_error_history` | 에러 로그 | id(PK), url, params, error_message, stack_trace |
+| `t_api_key` | API Key | id(PK), api_key(SHA-256), api_key_prefix, expired_at, able_state |
+| `t_api_key_permission` | API Key 권한 | id(PK), api_key_id(FK), permission |
+| `t_api_key_usage_history` | API Key 사용 이력 | id(PK), api_key_id(FK), request_uri, method, ip_address |
 | `t_board_meta` | 게시판 메타 | id(PK), title, description, roles, use_comment |
 | `t_board_field_meta` | 게시판 필드 | id(PK), board_meta_id(FK), field_name, field_type |
 | `t_board_data` | 게시글 | id(PK), board_meta_id(FK), title, content, status |
@@ -451,6 +558,15 @@ com.wan.framework
 | `t_board_attachment` | 첨부파일 | id(PK), board_data_id(FK), original_file_name, file_path |
 
 ### 5.2 주요 인덱스
+
+**ApiKey**
+- `idx_api_key` (api_key) - 해시값 조회 최적화
+- `idx_api_key_prefix` (api_key_prefix) - Prefix 검색
+- `idx_created_by` (created_by) - 생성자별 조회
+
+**ApiKeyUsageHistory**
+- `idx_api_key_id` (api_key_id) - API Key별 이력 조회
+- `idx_used_at` (used_at) - 시간별 조회
 
 **BoardData**
 - `idx_board_meta_status` (board_meta_id, status)
@@ -470,6 +586,9 @@ com.wan.framework
 
 ```
 Program 1:N Menu
+
+ApiKey 1:N ApiKeyPermission
+ApiKey 1:N ApiKeyUsageHistory
 
 BoardMeta 1:N BoardFieldMeta
 BoardMeta 1:N BoardData
@@ -566,6 +685,24 @@ BoardComment 1:N BoardComment (self-join)
 | DELETE | `/board-attachments/{id}` | 첨부파일 삭제 |
 | GET | `/board-attachments/board-data/{boardDataId}/total-size` | 총 파일 크기 |
 
+### 6.10 API Key (`/api-keys`)
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| POST | `/api-keys` | API Key 생성 |
+| GET | `/api-keys?page={page}&size={size}` | API Key 목록 |
+| GET | `/api-keys/{id}` | API Key 조회 |
+| POST | `/api-keys/{id}/toggle` | API Key 활성/비활성 전환 |
+| DELETE | `/api-keys/{id}` | API Key 삭제 |
+| POST | `/api-keys/{id}/permissions` | 권한 추가 |
+| DELETE | `/api-keys/{id}/permissions/{permission}` | 권한 삭제 |
+
+### 6.11 API Key 사용 이력 (`/api-key-usage`)
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| GET | `/api-key-usage/{apiKeyId}?page={page}&size={size}` | 사용 이력 목록 |
+| GET | `/api-key-usage/{apiKeyId}/stats` | 사용 통계 |
+| GET | `/api-key-usage/{apiKeyId}/period?start={start}&end={end}` | 기간별 이력 |
+
 ---
 
 ## 7. 테스트 현황
@@ -575,11 +712,13 @@ BoardComment 1:N BoardComment (self-join)
 | 모듈 | 테스트 클래스 | 테스트 케이스 수 |
 |------|---------------|------------------|
 | User | `PasswordServiceTest` | 7개 |
+| API Key | `ApiKeyServiceTest` | TBD |
+| API Key | `ApiKeyGeneratorTest` | TBD |
 | Board | `BoardMetaServiceTest` | 10개 |
 | Board | `BoardDataServiceTest` | 14개 |
 | Board | `BoardCommentServiceTest` | 11개 |
 | Board | `BoardAttachmentServiceTest` | 14개 |
-| **합계** | **5개** | **56개** |
+| **합계** | **7개** | **56개+** |
 
 ### 7.2 테스트 커버리지
 
@@ -588,6 +727,13 @@ BoardComment 1:N BoardComment (self-join)
 - ✅ 솔트 생성
 - ✅ 비밀번호 불일치 처리
 - ✅ null 값 예외 처리
+
+**API Key 모듈**
+- ✅ API Key 생성 및 해싱
+- ✅ API Key 검증 (만료, 활성 상태)
+- ✅ 권한 관리
+- ✅ 사용 이력 기록
+- ✅ Bearer Token 인증
 
 **Board 모듈**
 - ✅ 게시판 CRUD
@@ -625,7 +771,7 @@ BoardComment 1:N BoardComment (self-join)
 
 | 우선순위 | 모듈명 | 설명 | 상태 |
 |----------|--------|------|------|
-| 1 | API Key 관리 | API 키 생성/검증 | 📋 예정 |
+| 1 | API Key 관리 | API 키 생성/검증 | ✅ 완료 |
 | 2 | 프로그램 실행 (Proxy API) | 동적 API 라우팅 | 📋 예정 |
 | 3 | Redis 관리 | 캐싱 및 세션 관리 | 📋 예정 |
 | 4 | 배치 관리 | Spring Batch + Quartz | 📋 예정 |
@@ -675,25 +821,26 @@ BoardComment 1:N BoardComment (self-join)
 
 | 구분 | 파일 수 |
 |------|---------|
-| Entity | 12개 |
-| DTO | 13개 |
-| Repository | 12개 |
-| Service | 14개 |
-| Controller | 9개 |
-| Mapper | 11개 |
-| Exception | 12개 |
-| Constant | 8개 |
-| Config | 3개 |
-| Util | 1개 |
-| Test | 5개 |
-| **총계** | **100개** |
+| Entity | 15개 |
+| DTO | 16개 |
+| Repository | 15개 |
+| Service | 16개 |
+| Controller | 11개 |
+| Mapper | 14개 |
+| Exception | 13개 |
+| Constant | 9개 |
+| Config | 4개 |
+| Util | 2개 |
+| Interceptor | 1개 |
+| Test | 7개 |
+| **총계** | **123개** |
 
 ### 9.2 코드 라인 수 (추정)
 
-- Java 소스 코드: ~8,000 lines
-- 테스트 코드: ~2,000 lines
-- 설정 파일: ~200 lines
-- **총계: ~10,200 lines**
+- Java 소스 코드: ~10,000 lines
+- 테스트 코드: ~2,500 lines
+- 설정 파일: ~250 lines
+- **총계: ~12,750 lines**
 
 ---
 
@@ -711,8 +858,11 @@ BoardComment 1:N BoardComment (self-join)
 |------|------|-----------|
 | 2025-12-31 | 0.0.1 | 초기 문서 작성 |
 | 2025-12-31 | 0.0.1 | Board 모듈 완성 (6개 도메인, 파일 업로드 포함) |
+| 2026-01-02 | 0.0.1 | API Key 관리 모듈 완성 (3개 도메인, Bearer 인증 포함) |
+| 2026-01-02 | 0.0.1 | 설정 파일 보완 (password 암호화 설정 추가) |
+| 2026-01-02 | 0.0.1 | Repository 쿼리 오류 수정 (aggregate 함수, 복합 필드명) |
 
 ---
 
 **문서 작성자**: Claude Code
-**마지막 업데이트**: 2025-12-31
+**마지막 업데이트**: 2026-01-02

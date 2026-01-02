@@ -35,6 +35,40 @@ spring:
     job:
       enabled: false  # 시작 시 자동 실행 방지
 
+  # Redis 설정
+  data:
+    redis:
+      mode: STANDALONE  # STANDALONE, SENTINEL, CLUSTER
+      host: localhost
+      port: 6379
+      password:  # 패스워드가 없으면 비워두기
+      database: 0
+      timeout: 3000  # 연결 타임아웃 (ms)
+
+      # Sentinel 설정 (mode: SENTINEL 일 때 사용)
+      sentinel:
+        master:  # Master 이름
+        nodes:   # Sentinel 노드 목록
+          # - localhost:26379
+          # - localhost:26380
+        password:  # Sentinel 패스워드
+
+      # Cluster 설정 (mode: CLUSTER 일 때 사용)
+      cluster:
+        nodes:   # Cluster 노드 목록
+          # - localhost:7000
+          # - localhost:7001
+          # - localhost:7002
+        max-redirects: 3
+        password:  # Cluster 패스워드
+
+      # 커넥션 풀 설정
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1  # -1 = 무제한 대기
+
 server:
   port: 8080
   servlet:
