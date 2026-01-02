@@ -10,6 +10,7 @@ public enum ExceptionConst {
     MENU_ERROR("200", "메뉴관리 오류"),
     PROGRAM_ERROR("300", "프로그램 관리 오류"),
     BOARD_ERROR("400", "게시판 관리 오류"),
+    APIKEY_ERROR("500", "API Key 관리 오류"),
     INVALID_ERROR("900", "미정의 오류: 관리자에게 문의하세요");
 
     private final String code;
