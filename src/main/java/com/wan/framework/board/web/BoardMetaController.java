@@ -47,6 +47,6 @@ public class BoardMetaController {
     /** 게시판 삭제 */
     @DeleteMapping("/{id}")
     public void deleteBoard(@PathVariable Long id) {
-        boardMetaService.deleteProgram(id);
+        boardMetaService.deleteBoardMeta(id);
     }
 }

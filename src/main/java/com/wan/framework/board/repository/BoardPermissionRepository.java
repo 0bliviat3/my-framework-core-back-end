@@ -19,8 +19,14 @@ public interface BoardPermissionRepository extends JpaRepository<BoardPermission
     List<BoardPermission> findByBoardMetaIdAndPermissionTypeAndDataStateCodeNot(
         Long boardMetaId, PermissionType permissionType, DataStateCode dataStateCode);
 
+    @Query("SELECT bp FROM BoardPermission bp WHERE bp.boardMeta.id = :boardMetaId " +
+           "AND bp.roleOrUserId = :roleOrUserId AND bp.permissionType = :permissionType " +
+           "AND bp.dataStateCode <> :dataStateCode")
     Optional<BoardPermission> findByBoardMetaIdAndRoleOrUserIdAndPermissionTypeAndDataStateCodeNot(
-        Long boardMetaId, String roleOrUserId, PermissionType permissionType, DataStateCode dataStateCode);
+        @Param("boardMetaId") Long boardMetaId,
+        @Param("roleOrUserId") String roleOrUserId,
+        @Param("permissionType") PermissionType permissionType,
+        @Param("dataStateCode") DataStateCode dataStateCode);
 
     @Query("SELECT bp FROM BoardPermission bp WHERE bp.boardMeta.id = :boardMetaId " +
            "AND bp.roleOrUserId IN :roleOrUserIds AND bp.permissionType = :permissionType " +

@@ -6,7 +6,9 @@
       "Bash(find:*)",
       "Bash(mvn clean compile:*)",
       "Bash(./gradlew clean compileJava:*)",
-      "Bash(gradle clean compileJava:*)"
+      "Bash(gradle clean compileJava:*)",
+      "Bash(./mvnw clean compile:*)",
+      "Bash(dir:*)"
     ]
   }
 }
