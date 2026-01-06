@@ -8,7 +8,13 @@
       "Bash(./gradlew clean compileJava:*)",
       "Bash(gradle clean compileJava:*)",
       "Bash(./mvnw clean compile:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(./gradlew clean build:*)",
+      "Bash(gradle clean build:*)",
+      "Bash(./mvnw clean:*)",
+      "Bash(mvn clean test-compile:*)",
+      "Bash(./gradlew clean:*)",
+      "Bash(gradle clean testClasses:*)"
     ]
   }
 }

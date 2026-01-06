@@ -828,6 +828,297 @@ curl -X POST http://localhost:8080/proxy/execute \
 
 ---
 
+### 3.8 Batch 모듈 (배치 관리)
+
+#### ✅ 구현 파일 (총 22개)
+
+**Domain & DTO**
+- `BatchJob.java` - 배치 작업 엔티티
+- `BatchExecution.java` - 배치 실행 이력 엔티티
+- `BatchJobDTO.java` - 배치 작업 DTO
+- `BatchExecutionDTO.java` - 배치 실행 이력 DTO
+- `BatchExecutionRequest.java` - 배치 실행 요청 DTO
+
+**Repository**
+- `BatchJobRepository.java` - 배치 작업 Repository
+- `BatchExecutionRepository.java` - 배치 실행 이력 Repository
+
+**Service**
+- `BatchJobService.java` - 배치 작업 CRUD 및 스케줄러 통합
+- `BatchExecutionService.java` - 배치 실행 로직 (Redis Lock + Proxy API)
+- `BatchHistoryService.java` - 실행 이력 조회 및 통계
+- `BatchSchedulerService.java` - Quartz 스케줄러 관리
+
+**Controller**
+- `BatchJobController.java` - 배치 작업 관리 API
+- `BatchExecutionController.java` - 배치 실행 및 이력 조회 API
+
+**Mapper**
+- `BatchJobMapper.java` - Entity ↔ DTO 변환
+- `BatchExecutionMapper.java` - Entity ↔ DTO 변환
+
+**Quartz**
+- `QuartzBatchJob.java` - Quartz Job 실행자
+- `QuartzConfig.java` - Quartz 스케줄러 설정
+- `BatchStartupInitializer.java` - 애플리케이션 시작 시 배치 등록
+
+**Exception**
+- `BatchException.java` - 배치 관련 예외
+- `BatchExceptionMessage.java` - 예외 메시지 상수 (15개)
+
+**Constant**
+- `BatchStatus.java` - 배치 상태 (WAIT, RUNNING, SUCCESS, FAIL, RETRY, TIMEOUT)
+- `BatchTriggerType.java` - 트리거 타입 (SCHEDULER, MANUAL, RETRY)
+- `ScheduleType.java` - 스케줄 타입 (CRON, INTERVAL)
+
+**Test**
+- `BatchJobServiceTest.java` - 배치 작업 서비스 테스트 (16개 테스트)
+- `BatchExecutionServiceTest.java` - 배치 실행 서비스 테스트 (11개 테스트)
+- `BatchSchedulerServiceTest.java` - 스케줄러 서비스 테스트 (11개 테스트)
+
+**주요 기능:**
+
+**1. 스케줄 기반 배치 실행**
+- ✅ CRON 표현식 지원 (예: `0 0 * * * ?` - 매 시간)
+- ✅ INTERVAL 지원 (예: `60000` - 60초마다)
+- ✅ Quartz 클러스터 모드 (멀티 서버 환경)
+- ✅ Misfire 처리 (DoNothing, NextWithRemainingCount)
+- ✅ 스케줄 표현식 검증 (CRON, INTERVAL)
+- ✅ 동적 스케줄 변경 (재등록)
+
+**2. Redis 분산 락 기반 중복 실행 방지**
+- ✅ Lock Key: `batch:{batchId}:lock`
+- ✅ Lock TTL: timeout + 10초 (안전 버퍼)
+- ✅ allowConcurrent 설정에 따른 동시 실행 제어
+- ✅ Lock 획득 실패 시 예외 처리
+- ✅ Lock 자동 해제 (finally 블록)
+
+**3. Proxy API 통합**
+- ✅ 배치 로직은 Proxy API로 완전 분리
+- ✅ 템플릿 변수 자동 주입 (executionId, batchId)
+- ✅ API 실행 결과로 배치 성공/실패 판단
+- ✅ Proxy API 실행 이력 연동
+
+**4. 배치 상태 관리**
+```
+WAIT → RUNNING → SUCCESS/FAIL/TIMEOUT
+                ↓
+              RETRY → SUCCESS/FAIL
+```
+- ✅ 6가지 상태 관리
+- ✅ 상태 전이 로직
+- ✅ 실행 시간 측정
+- ✅ 종료 시간 기록
+
+**5. 자동 재시도**
+- ✅ 설정 가능한 최대 재시도 횟수 (maxRetryCount)
+- ✅ 재시도 간격 설정 (retryIntervalSeconds)
+- ✅ 재시도 이력 연결 (originalExecutionId)
+- ✅ 재시도 횟수 추적 (retryCount)
+- ✅ 재시도 대상 자동 조회
+- ✅ 수동 재시도 API 제공
+
+**6. 실행 트리거**
+- ✅ **SCHEDULER**: Quartz 스케줄러 자동 실행
+- ✅ **MANUAL**: Run Now (수동 즉시 실행)
+- ✅ **RETRY**: 재시도 실행
+
+**7. 배치 작업 관리**
+- ✅ 배치 생성/수정/삭제
+- ✅ 활성/비활성 토글 (재시작 없이)
+- ✅ 실행 중인 배치 삭제 방지
+- ✅ 배치 수정 시 다음 실행부터 적용
+- ✅ 논리적 삭제 (DataStateCode)
+- ✅ Proxy API 코드 연결
+
+**8. 실행 이력 관리**
+- ✅ 모든 실행 이력 기록 (성공/실패 무관)
+- ✅ 배치별 이력 조회 (페이징)
+- ✅ 상태별 이력 조회
+- ✅ 트리거 타입별 이력 조회
+- ✅ 기간별 이력 조회
+- ✅ 최근 실행 이력 조회 (최대 10개)
+- ✅ 실행 통계 조회
+  - 총 실행 횟수
+  - 성공 횟수
+  - 실패 횟수
+  - 평균 실행 시간
+
+**9. 시작 시 자동 초기화**
+- ✅ ApplicationRunner로 자동 실행
+- ✅ 활성화된 배치 작업 조회
+- ✅ Quartz 스케줄러 등록
+- ✅ 예외 발생 시에도 애플리케이션 시작 (로깅만)
+
+**10. 보안 및 안정성**
+- ✅ 중복 실행 방지 (Redis 분산 락)
+- ✅ 타임아웃 처리
+- ✅ Lock 자동 해제 (finally)
+- ✅ 예외 핸들링 및 로깅
+- ✅ 실행 이력으로 추적성 확보
+
+**API 엔드포인트:**
+
+**배치 작업 관리**
+- `POST /batch-jobs` - 배치 작업 생성
+- `PUT /batch-jobs/{id}` - 배치 작업 수정
+- `DELETE /batch-jobs/{id}` - 배치 작업 삭제
+- `GET /batch-jobs/{id}` - 배치 작업 조회
+- `GET /batch-jobs` - 배치 작업 목록 (페이징)
+- `GET /batch-jobs/enabled` - 활성화된 배치 목록 (페이징)
+- `POST /batch-jobs/{id}/toggle` - 활성/비활성 토글
+
+**배치 실행 관리**
+- `POST /batch-executions/execute` - 수동 실행 (Run Now)
+- `POST /batch-executions/retry/{executionId}` - 재시도
+- `GET /batch-executions/{id}` - 실행 이력 조회 (ID)
+- `GET /batch-executions/execution-id/{executionId}` - 실행 이력 조회 (실행 ID)
+- `GET /batch-executions/batch-job/{batchJobId}` - 배치별 이력 (페이징)
+- `GET /batch-executions/batch-id/{batchId}` - 배치 ID별 이력 (페이징)
+- `GET /batch-executions/status/{status}` - 상태별 이력 (페이징)
+- `GET /batch-executions/trigger-type/{triggerType}` - 트리거별 이력 (페이징)
+- `GET /batch-executions/period` - 기간별 이력
+- `GET /batch-executions/recent/{batchId}` - 최근 이력 (최대 10개)
+- `GET /batch-executions/stats/{batchJobId}` - 실행 통계
+- `GET /batch-executions/retry-targets` - 재시도 대상 조회
+
+**사용 예시:**
+
+**1. 배치 작업 생성**
+```json
+POST /batch-jobs
+
+{
+  "batchId": "DAILY_REPORT",
+  "batchName": "일일 리포트 생성",
+  "description": "매일 자정 리포트 생성 및 전송",
+  "scheduleType": "CRON",
+  "scheduleExpression": "0 0 0 * * ?",
+  "proxyApiCode": "REPORT_API",
+  "executionParameters": "{\"reportType\":\"daily\"}",
+  "enabled": true,
+  "allowConcurrent": false,
+  "maxRetryCount": 3,
+  "retryIntervalSeconds": 300,
+  "timeoutSeconds": 600
+}
+```
+
+**2. 수동 실행 (Run Now)**
+```json
+POST /batch-executions/execute
+
+{
+  "batchId": "DAILY_REPORT",
+  "executedBy": "admin",
+  "parameters": {
+    "reportType": "adhoc",
+    "date": "2026-01-06"
+  }
+}
+
+Response:
+{
+  "executionId": "exec-uuid-001",
+  "batchId": "DAILY_REPORT",
+  "status": "RUNNING",
+  "triggerType": "MANUAL",
+  "startTime": "2026-01-06T10:30:00"
+}
+```
+
+**3. 배치 재시도**
+```json
+POST /batch-executions/retry/exec-uuid-001?executedBy=admin
+
+Response:
+{
+  "executionId": "exec-uuid-002",
+  "originalExecutionId": "exec-uuid-001",
+  "status": "RUNNING",
+  "triggerType": "RETRY",
+  "retryCount": 1
+}
+```
+
+**4. 실행 통계 조회**
+```json
+GET /batch-executions/stats/1
+
+Response:
+{
+  "totalCount": 100,
+  "successCount": 95,
+  "failureCount": 5,
+  "avgExecutionTime": 1250.5
+}
+```
+
+**데이터베이스 스키마:**
+
+**t_batch_job**
+```sql
+CREATE TABLE t_batch_job (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  batch_id VARCHAR(100) NOT NULL UNIQUE,
+  batch_name VARCHAR(200) NOT NULL,
+  description TEXT,
+  schedule_type VARCHAR(20) NOT NULL,  -- CRON, INTERVAL
+  schedule_expression VARCHAR(100) NOT NULL,
+  proxy_api_code VARCHAR(100) NOT NULL,
+  execution_parameters TEXT,
+  enabled TINYINT(1) DEFAULT 1,
+  allow_concurrent TINYINT(1) DEFAULT 0,
+  max_retry_count INT DEFAULT 0,
+  retry_interval_seconds INT DEFAULT 60,
+  timeout_seconds INT DEFAULT 300,
+  create_time DATETIME,
+  modified_time DATETIME,
+  data_state CHAR(1),
+  INDEX idx_batch_id (batch_id),
+  INDEX idx_enabled (enabled)
+);
+```
+
+**t_batch_execution**
+```sql
+CREATE TABLE t_batch_execution (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  execution_id VARCHAR(50) NOT NULL UNIQUE,
+  batch_job_id BIGINT NOT NULL,
+  batch_id VARCHAR(100) NOT NULL,
+  status VARCHAR(20) NOT NULL,  -- WAIT, RUNNING, SUCCESS, FAIL, RETRY, TIMEOUT
+  trigger_type VARCHAR(20) NOT NULL,  -- SCHEDULER, MANUAL, RETRY
+  proxy_execution_history_id BIGINT,
+  start_time DATETIME,
+  end_time DATETIME,
+  execution_time_ms BIGINT,
+  executed_by VARCHAR(100),
+  retry_count INT DEFAULT 0,
+  original_execution_id VARCHAR(50),
+  error_message TEXT,
+  create_time DATETIME,
+  modified_time DATETIME,
+  INDEX idx_batch_job_id (batch_job_id),
+  INDEX idx_batch_id (batch_id),
+  INDEX idx_status (status),
+  INDEX idx_start_time (start_time),
+  INDEX idx_trigger_type (trigger_type),
+  INDEX idx_execution_id (execution_id),
+  FOREIGN KEY (batch_job_id) REFERENCES t_batch_job(id)
+);
+```
+
+**Quartz 테이블** (자동 생성)
+- `QRTZ_JOB_DETAILS` - Job 정보
+- `QRTZ_TRIGGERS` - Trigger 정보
+- `QRTZ_CRON_TRIGGERS` - CRON Trigger
+- `QRTZ_SIMPLE_TRIGGERS` - Simple Trigger
+- `QRTZ_FIRED_TRIGGERS` - 실행 중인 Trigger
+- `QRTZ_LOCKS` - 분산 락
+
+---
+
 ## 4. 아키텍처
 
 ### 4.1 패키지 구조
@@ -886,16 +1177,28 @@ com.wan.framework
 │   ├── exception/          # 예외
 │   └── constant/           # 상수
 │
-└── proxy/                   # Proxy API 모듈
+├── proxy/                   # Proxy API 모듈
+│   ├── domain/             # 2개 엔티티
+│   ├── dto/                # 4개 DTO
+│   ├── repository/         # 2개 Repository
+│   ├── service/            # 3개 Service
+│   ├── web/                # 3개 Controller
+│   ├── mapper/             # 2개 Mapper
+│   ├── config/             # RestTemplate 설정
+│   ├── exception/          # 예외
+│   └── constant/           # 상수
+│
+└── batch/                   # Batch 모듈
     ├── domain/             # 2개 엔티티
-    ├── dto/                # 4개 DTO
+    ├── dto/                # 3개 DTO
     ├── repository/         # 2개 Repository
-    ├── service/            # 3개 Service
-    ├── web/                # 3개 Controller
+    ├── service/            # 4개 Service
+    ├── web/                # 2개 Controller
     ├── mapper/             # 2개 Mapper
-    ├── config/             # RestTemplate 설정
+    ├── config/             # 2개 Config (Quartz, Initializer)
+    ├── job/                # 1개 QuartzBatchJob
     ├── exception/          # 예외
-    └── constant/           # 상수
+    └── constant/           # 상수 (3개)
 ```
 
 ### 4.2 계층 구조
@@ -939,7 +1242,7 @@ com.wan.framework
 
 ## 5. 데이터베이스 스키마
 
-### 5.1 테이블 목록 (총 17개)
+### 5.1 테이블 목록 (총 19개 + Quartz 11개)
 
 | 테이블명 | 설명 | 주요 컬럼 |
 |----------|------|-----------|
@@ -958,6 +1261,9 @@ com.wan.framework
 | `t_board_attachment` | 첨부파일 | id(PK), board_data_id(FK), original_file_name, file_path |
 | `t_api_endpoint` | API 엔드포인트 | id(PK), api_code, target_url, http_method, timeout_seconds |
 | `t_api_execution_history` | API 실행 이력 | id(PK), api_endpoint_id(FK), executed_url, response_status_code |
+| `t_batch_job` | 배치 작업 | id(PK), batch_id, schedule_type, schedule_expression, proxy_api_code |
+| `t_batch_execution` | 배치 실행 이력 | id(PK), execution_id, batch_job_id(FK), status, trigger_type |
+| `QRTZ_*` | Quartz 스케줄러 | 11개 테이블 (자동 생성) |
 
 ### 5.2 주요 인덱스
 
@@ -983,6 +1289,18 @@ com.wan.framework
 **BoardAttachment**
 - `idx_board_data_id` (board_data_id)
 - `idx_uploaded_by` (uploaded_by)
+
+**BatchJob**
+- `idx_batch_id` (batch_id) - Batch ID 조회
+- `idx_enabled` (enabled) - 활성화된 배치 조회
+
+**BatchExecution**
+- `idx_batch_job_id` (batch_job_id) - 배치 작업별 이력 조회
+- `idx_batch_id` (batch_id) - Batch ID별 이력 조회
+- `idx_status` (status) - 상태별 조회
+- `idx_start_time` (start_time) - 시간별 조회
+- `idx_trigger_type` (trigger_type) - 트리거 타입별 조회
+- `idx_execution_id` (execution_id) - 실행 ID 조회
 
 **ApiExecutionHistory**
 - `idx_api_endpoint_id` (api_endpoint_id) - API 엔드포인트별 조회
@@ -1240,6 +1558,28 @@ ApiEndpoint 1:N ApiExecutionHistory
 - ✅ 논리적 삭제
 - ✅ 예외 처리
 
+**Batch 모듈**
+- ✅ 배치 작업 생성/수정/삭제
+- ✅ 중복 batchId 검증
+- ✅ CRON/INTERVAL 표현식 검증
+- ✅ 배치 작업 조회 (ID, batchId, 목록)
+- ✅ 활성화된 배치 목록 조회
+- ✅ 활성/비활성 토글
+- ✅ 배치 실행 (SCHEDULER, MANUAL, RETRY)
+- ✅ Redis 분산 락 기반 중복 실행 방지
+- ✅ Proxy API 통합 실행
+- ✅ 배치 재시도 (자동/수동)
+- ✅ 최대 재시도 횟수 초과 검증
+- ✅ 실행 이력 조회 (배치별, 상태별, 트리거별, 기간별)
+- ✅ 실행 통계 조회
+- ✅ 재시도 대상 조회
+- ✅ Quartz 스케줄러 등록/해제
+- ✅ CRON/INTERVAL Trigger 생성
+- ✅ 스케줄러 상태 확인
+- ✅ 시작 시 자동 배치 등록
+- ✅ 논리적 삭제
+- ✅ 예외 처리
+
 ### 7.3 테스트 실행 방법
 
 ```bash
@@ -1268,7 +1608,7 @@ ApiEndpoint 1:N ApiExecutionHistory
 | 1 | API Key 관리 | API 키 생성/검증 | ✅ 완료 |
 | 2 | Redis 관리 | 분산 락 및 캐시 관리 | ✅ 완료 |
 | 3 | Proxy API | 동적 API 호출 및 실행 관리 | ✅ 완료 |
-| 4 | 배치 관리 | Spring Batch + Quartz | 📋 예정 |
+| 4 | 배치 관리 | Quartz + Redis Lock + Proxy API | ✅ 완료 |
 | 5 | 공통코드 관리 | 코드 관리 (Redis 활용) | 📋 예정 |
 | 6 | 세션 관리 | Redis 기반 세션 | 📋 예정 |
 
@@ -1315,26 +1655,27 @@ ApiEndpoint 1:N ApiExecutionHistory
 
 | 구분 | 파일 수 |
 |------|---------|
-| Entity | 17개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2) |
-| DTO | 23개 (User 2, Program 1, Menu 2, ErrorHistory 1, ApiKey 3, Board 6, Redis 3, Proxy 4) |
-| Repository | 17개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2) |
-| Service | 21개 (User 3, Program 1, Menu 1, ErrorHistory 1, ApiKey 2, Board 5, Redis 2, Proxy 3) |
-| Controller | 16개 (User 1, Program 1, Menu 1, ApiKey 2, Board 5, Redis 2, Proxy 3) |
-| Mapper | 16개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2) |
-| Exception | 17개 (Base 1, User 2, Program 2, Menu 2, ApiKey 2, Board 2, Redis 2, Proxy 2) |
-| Constant | 12개 (Base 2, Board 4, ApiKey 1, Redis 2, Proxy 1) |
-| Config | 7개 (Base 2, ApiKey 1, Board 1, Redis 1, Proxy 1) |
-| Util | 3개 (ApiKey 1, Board 1) |
+| Entity | 19개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2) |
+| DTO | 26개 (User 2, Program 1, Menu 2, ErrorHistory 1, ApiKey 3, Board 6, Redis 3, Proxy 4, Batch 3) |
+| Repository | 19개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2) |
+| Service | 25개 (User 3, Program 1, Menu 1, ErrorHistory 1, ApiKey 2, Board 5, Redis 2, Proxy 3, Batch 4) |
+| Controller | 18개 (User 1, Program 1, Menu 1, ApiKey 2, Board 5, Redis 2, Proxy 3, Batch 2) |
+| Mapper | 18개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2) |
+| Exception | 19개 (Base 1, User 2, Program 2, Menu 2, ApiKey 2, Board 2, Redis 2, Proxy 2, Batch 2) |
+| Constant | 16개 (Base 2, Board 4, ApiKey 1, Redis 2, Proxy 1, Batch 4) |
+| Config | 10개 (Base 2, ApiKey 1, Board 1, Redis 1, Proxy 1, Batch 2) |
+| Job | 1개 (Batch 1 - QuartzBatchJob) |
+| Util | 3개 (ApiKey 1, Board 1, Batch 1 - Initializer) |
 | Interceptor | 2개 (Base 1, ApiKey 1) |
-| Test | 10개 (User 1, ApiKey 2, Board 4, Redis 2, Proxy 1) |
-| **총계** | **161개** |
+| Test | 13개 (User 1, ApiKey 2, Board 4, Redis 2, Proxy 1, Batch 3) |
+| **총계** | **189개** |
 
 ### 9.2 코드 라인 수 (추정)
 
-- Java 소스 코드: ~13,000 lines
-- 테스트 코드: ~3,700 lines
-- 설정 파일: ~300 lines
-- **총계: ~17,000 lines**
+- Java 소스 코드: ~15,500 lines
+- 테스트 코드: ~5,000 lines
+- 설정 파일: ~400 lines
+- **총계: ~20,900 lines**
 
 ---
 
@@ -1357,6 +1698,7 @@ ApiEndpoint 1:N ApiExecutionHistory
 | 2026-01-02 | 0.0.1 | Repository 쿼리 오류 수정 (aggregate 함수, 복합 필드명) |
 | 2026-01-06 | 0.0.1 | Redis 관리 모듈 완성 (분산 락, 캐시 관리, Spring Boot 표준 설정) |
 | 2026-01-06 | 0.0.1 | Proxy API 모듈 완성 (동적 API 호출, 실행 이력, 재시도 로직, RestTemplate) |
+| 2026-01-06 | 0.0.1 | 배치 관리 모듈 완성 (Quartz 스케줄러, Redis 분산 락, Proxy API 통합, 자동 재시도, CRON/INTERVAL) |
 
 ---
 

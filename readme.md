@@ -246,10 +246,10 @@ JPA의 `ddl-auto: update` 설정으로 인해 애플리케이션 시작 시 자�
 - **API Key 관리 모듈**: API Key 생성/검증, Bearer 인증, 권한 관리, 사용 이력
 - **Redis 관리 모듈**: 분산 락, 캐시 관리, Standalone/Sentinel/Cluster 지원
 - **Proxy API 모듈**: 동적 API 호출, 실행 이력 관리, 재시도 로직, 배치/스케줄러 연동
+- **배치 관리 모듈**: Quartz 스케줄러 기반, CRON/INTERVAL 스케줄, Redis 분산 락, Proxy API 통합, 자동 재시도
 - **예외 처리 모듈**: 전역 예외 처리 및 히스토리 저장
 
 ### 📋 예정된 모듈
-- 배치 관리 모듈 (Redis 기반 고가용성 배치 처리)
 - 공통코드 관리 모듈 (Redis 활용)
 - 세션 관리 모듈 (Redis 활용)
 
@@ -321,6 +321,22 @@ JPA의 `ddl-auto: update` 설정으로 인해 애플리케이션 시작 시 자�
 - `POST /api-endpoints/{id}/toggle`: 활성/비활성 토글
 - `GET /api-execution-history/{id}`: 실행 이력 조회
 - `GET /api-execution-history/api-code/{apiCode}`: API 코드별 이력
+
+### 배치 관리
+- `POST /batch-jobs`: 배치 작업 생성
+- `PUT /batch-jobs/{id}`: 배치 작업 수정
+- `DELETE /batch-jobs/{id}`: 배치 작업 삭제
+- `GET /batch-jobs/{id}`: 배치 작업 조회
+- `GET /batch-jobs`: 배치 작업 목록 조회 (페이징)
+- `GET /batch-jobs/enabled`: 활성화된 배치 작업 목록
+- `POST /batch-jobs/{id}/toggle`: 배치 활성/비활성 토글
+- `POST /batch-executions/execute`: 배치 수동 실행 (Run Now)
+- `POST /batch-executions/retry/{executionId}`: 배치 재시도
+- `GET /batch-executions/{id}`: 실행 이력 조회
+- `GET /batch-executions/batch-id/{batchId}`: 배치별 실행 이력
+- `GET /batch-executions/status/{status}`: 상태별 실행 이력
+- `GET /batch-executions/stats/{batchJobId}`: 배치 실행 통계
+- `GET /batch-executions/retry-targets`: 재시도 대상 조회
 
 ## 프론트엔드 연동 가이드
 

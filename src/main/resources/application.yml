@@ -35,6 +35,11 @@ spring:
     job:
       enabled: false  # 시작 시 자동 실행 방지
 
+  quartz:
+    job-store-type: jdbc  # DB 기반 Job Store
+    jdbc:
+      initialize-schema: always  # Quartz 테이블 자동 생성
+
   # Redis 설정 (Spring Boot 표준 - Standalone)
   data:
     redis:
