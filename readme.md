@@ -245,10 +245,10 @@ JPA의 `ddl-auto: update` 설정으로 인해 애플리케이션 시작 시 자�
 - **게시판 모듈**: 동적 게시판 생성, 게시글/댓글 관리, 파일 첨부
 - **API Key 관리 모듈**: API Key 생성/검증, Bearer 인증, 권한 관리, 사용 이력
 - **Redis 관리 모듈**: 분산 락, 캐시 관리, Standalone/Sentinel/Cluster 지원
+- **Proxy API 모듈**: 동적 API 호출, 실행 이력 관리, 재시도 로직, 배치/스케줄러 연동
 - **예외 처리 모듈**: 전역 예외 처리 및 히스토리 저장
 
 ### 📋 예정된 모듈
-- 프로그램 실행 모듈 (Proxy API)
 - 배치 관리 모듈 (Redis 기반 고가용성 배치 처리)
 - 공통코드 관리 모듈 (Redis 활용)
 - 세션 관리 모듈 (Redis 활용)
@@ -311,6 +311,16 @@ JPA의 `ddl-auto: update` 설정으로 인해 애플리케이션 시작 시 자�
 - `DELETE /redis/cache/{key}`: 캐시 삭제
 - `GET /redis/cache/keys`: 패턴 매칭 조회
 - Hash, Set 연산 API
+
+### Proxy API
+- `POST /proxy/execute`: API 실행 (데이터 기반)
+- `POST /api-endpoints`: API 엔드포인트 등록
+- `GET /api-endpoints`: API 엔드포인트 목록
+- `PUT /api-endpoints/{id}`: API 엔드포인트 수정
+- `DELETE /api-endpoints/{id}`: API 엔드포인트 삭제
+- `POST /api-endpoints/{id}/toggle`: 활성/비활성 토글
+- `GET /api-execution-history/{id}`: 실행 이력 조회
+- `GET /api-execution-history/api-code/{apiCode}`: API 코드별 이력
 
 ## 프론트엔드 연동 가이드
 

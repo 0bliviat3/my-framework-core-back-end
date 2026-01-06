@@ -632,6 +632,202 @@ cacheService.sAdd("PROCESSED_REQUESTS", requestId);
 
 ---
 
+### 3.9 Proxy API 모듈 (동적 API 호출) ⭐ NEW
+
+#### ✅ 구현 파일 (총 15개)
+
+**Domain (2개)**
+- `ApiEndpoint.java` - API 엔드포인트 메타 정보 (URL, 메서드, 헤더, 바디 템플릿)
+- `ApiExecutionHistory.java` - API 실행 이력 (요청/응답, 성공/실패, 실행 시간)
+
+**DTO (4개)**
+- `ApiEndpointDTO.java` - API 엔드포인트 DTO
+- `ApiExecutionHistoryDTO.java` - API 실행 이력 DTO
+- `ProxyExecutionRequest.java` - Proxy 실행 요청 DTO
+- `ProxyExecutionResponse.java` - Proxy 실행 응답 DTO
+
+**Repository (2개)**
+- `ApiEndpointRepository.java` - API 엔드포인트 Repository
+- `ApiExecutionHistoryRepository.java` - 실행 이력 Repository (통계 쿼리 포함)
+
+**Service (3개)**
+- `ApiEndpointService.java` - API 엔드포인트 CRUD
+- `ApiExecutionService.java` - HTTP 클라이언트 기반 API 실행, 재시도 로직
+- `ApiExecutionHistoryService.java` - 실행 이력 조회 및 통계
+
+**Controller (3개)**
+- `ProxyApiController.java` - 공통 실행 엔드포인트 (POST /proxy/execute)
+- `ApiEndpointController.java` - API 엔드포인트 관리 API
+- `ApiExecutionHistoryController.java` - 실행 이력 조회 API
+
+**Mapper (2개)**
+- `ApiEndpointMapper.java` - Entity ↔ DTO 변환
+- `ApiExecutionHistoryMapper.java` - Entity ↔ DTO 변환
+
+**Config**
+- `RestTemplateConfig.java` - RestTemplate 설정 (타임아웃 30초)
+
+**Exception (2개)**
+- `ProxyException.java` - Proxy API 관련 예외
+- `ProxyExceptionMessage.java` - 예외 메시지 (14개 상수)
+
+**Constants**
+- `ExecutionTrigger.java` - 실행 트리거 (MANUAL, SCHEDULER, BATCH)
+
+**Test (1개, 총 12개 테스트)**
+- `ApiEndpointServiceTest.java` - 12개 테스트
+
+#### 📋 Proxy API 모듈 상세 기능
+
+**1. 동적 API 호출 (ApiExecutionService)**
+- ✅ 데이터 기반 API 호출 (코드에 의존하지 않음)
+- ✅ HTTP 메서드 지원 (GET, POST, PUT, DELETE, PATCH)
+- ✅ 요청 헤더/바디 템플릿 치환 (`${variable}` 형식)
+- ✅ RestTemplate 기반 HTTP 클라이언트
+- ✅ 타임아웃 설정 (기본 30초, 개별 설정 가능)
+- ✅ 재시도 로직 (재시도 횟수, 재시도 간격 설정)
+- ✅ 성공/실패 자동 판별
+- ✅ 실행 이력 자동 저장
+- ✅ 내부/외부 API 구분 지원
+
+**템플릿 치환 예시:**
+```java
+// API 엔드포인트 설정
+targetUrl: "https://api.example.com/users/${userId}/orders"
+requestBody: "{\"action\": \"${action}\", \"amount\": ${amount}}"
+
+// 실행 요청
+parameters: {
+    "userId": "12345",
+    "action": "approve",
+    "amount": 50000
+}
+
+// 실제 호출
+URL: "https://api.example.com/users/12345/orders"
+Body: {"action": "approve", "amount": 50000}
+```
+
+**2. API 엔드포인트 관리 (ApiEndpoint)**
+- ✅ API 메타 정보 등록/수정/삭제
+- ✅ API 코드 (고유 식별자)
+- ✅ 대상 URL (템플릿 변수 지원)
+- ✅ HTTP 메서드
+- ✅ 요청 헤더 (JSON)
+- ✅ 요청 바디 템플릿 (JSON)
+- ✅ 타임아웃 설정
+- ✅ 재시도 설정 (횟수, 간격)
+- ✅ 내부/외부 API 구분
+- ✅ 활성/비활성 상태 관리
+- ✅ 논리적 삭제
+
+**3. 실행 이력 관리 (ApiExecutionHistory)**
+- ✅ 모든 API 호출 이력 기록
+- ✅ 요청 정보 저장 (URL, 메서드, 헤더, 바디)
+- ✅ 응답 정보 저장 (상태 코드, 헤더, 바디)
+- ✅ 실행 시간 측정 (밀리초)
+- ✅ 성공/실패 기록
+- ✅ 에러 메시지 저장
+- ✅ 재시도 횟수 기록
+- ✅ 실행 트리거 기록 (MANUAL, SCHEDULER, BATCH)
+- ✅ 실행자 기록
+- ✅ 기간별 조회
+- ✅ 성공률 통계
+- ✅ 평균 실행 시간 통계
+
+**4. 공통 실행 엔드포인트**
+```java
+POST /proxy/execute
+
+Request:
+{
+    "apiCode": "USER_API_001",
+    "parameters": {
+        "userId": "12345",
+        "action": "approve"
+    },
+    "executionTrigger": "MANUAL",
+    "executedBy": "admin"
+}
+
+Response:
+{
+    "executionHistoryId": 123,
+    "apiCode": "USER_API_001",
+    "isSuccess": true,
+    "statusCode": 200,
+    "responseBody": "{\"result\": \"success\"}",
+    "executionTimeMs": 1250,
+    "retryAttempt": 0,
+    "executedAt": "2026-01-06T10:30:00"
+}
+```
+
+**5. 재시도 로직**
+- ✅ 설정 가능한 재시도 횟수
+- ✅ 재시도 간격 (밀리초)
+- ✅ HTTP 에러 발생 시 자동 재시도
+- ✅ 연결 실패 시 재시도
+- ✅ 최종 실패 시 에러 정보 기록
+
+**6. 배치/스케줄러 연동**
+- ✅ 실행 트리거 구분 (MANUAL, SCHEDULER, BATCH)
+- ✅ 다중 서버 환경 안전성 (실행 이력으로 중복 실행 추적)
+- ✅ 호출 실패가 시스템 전체에 영향 주지 않음
+- ✅ 비동기 실행 가능
+
+**7. 보안 및 안정성**
+- ✅ API 활성/비활성 제어
+- ✅ 타임아웃으로 무한 대기 방지
+- ✅ 재시도 제한으로 리소스 보호
+- ✅ 에러 핸들링 및 로깅
+- ✅ 실행 이력으로 추적성 확보
+
+**8. 사용 사례**
+
+**배치 작업에서 외부 API 호출**
+```java
+ProxyExecutionRequest request = ProxyExecutionRequest.builder()
+    .apiCode("PAYMENT_APPROVAL_API")
+    .parameters(Map.of(
+        "orderId", orderId,
+        "amount", amount
+    ))
+    .executionTrigger("BATCH")
+    .executedBy("batch-job")
+    .build();
+
+ProxyExecutionResponse response = proxyApiController.executeApi(request);
+```
+
+**스케줄러에서 주기적 API 호출**
+```java
+@Scheduled(cron = "0 0 * * * *")  // 매 시간
+public void syncUserData() {
+    ProxyExecutionRequest request = ProxyExecutionRequest.builder()
+        .apiCode("USER_SYNC_API")
+        .executionTrigger("SCHEDULER")
+        .executedBy("scheduler")
+        .build();
+
+    proxyApiController.executeApi(request);
+}
+```
+
+**수동 API 테스트**
+```bash
+curl -X POST http://localhost:8080/proxy/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "apiCode": "TEST_API",
+    "parameters": {"userId": "12345"},
+    "executionTrigger": "MANUAL",
+    "executedBy": "admin"
+  }'
+```
+
+---
+
 ## 4. 아키텍처
 
 ### 4.1 패키지 구조
@@ -682,11 +878,22 @@ com.wan.framework
 │   ├── exception/          # 예외
 │   └── constant/           # 상수
 │
-└── redis/                   # Redis 모듈
-    ├── dto/                # 3개 DTO
-    ├── service/            # 2개 Service
-    ├── web/                # 2개 Controller
-    ├── config/             # Redis 설정
+├── redis/                   # Redis 모듈
+│   ├── dto/                # 3개 DTO
+│   ├── service/            # 2개 Service
+│   ├── web/                # 2개 Controller
+│   ├── config/             # Redis 설정
+│   ├── exception/          # 예외
+│   └── constant/           # 상수
+│
+└── proxy/                   # Proxy API 모듈
+    ├── domain/             # 2개 엔티티
+    ├── dto/                # 4개 DTO
+    ├── repository/         # 2개 Repository
+    ├── service/            # 3개 Service
+    ├── web/                # 3개 Controller
+    ├── mapper/             # 2개 Mapper
+    ├── config/             # RestTemplate 설정
     ├── exception/          # 예외
     └── constant/           # 상수
 ```
@@ -732,7 +939,7 @@ com.wan.framework
 
 ## 5. 데이터베이스 스키마
 
-### 5.1 테이블 목록 (총 15개)
+### 5.1 테이블 목록 (총 17개)
 
 | 테이블명 | 설명 | 주요 컬럼 |
 |----------|------|-----------|
@@ -749,6 +956,8 @@ com.wan.framework
 | `t_board_permission` | 게시판 권한 | id(PK), board_meta_id(FK), role_or_user_id, permission_type |
 | `t_board_comment` | 댓글 | id(PK), board_data_id(FK), parent_id(FK), content |
 | `t_board_attachment` | 첨부파일 | id(PK), board_data_id(FK), original_file_name, file_path |
+| `t_api_endpoint` | API 엔드포인트 | id(PK), api_code, target_url, http_method, timeout_seconds |
+| `t_api_execution_history` | API 실행 이력 | id(PK), api_endpoint_id(FK), executed_url, response_status_code |
 
 ### 5.2 주요 인덱스
 
@@ -775,6 +984,11 @@ com.wan.framework
 - `idx_board_data_id` (board_data_id)
 - `idx_uploaded_by` (uploaded_by)
 
+**ApiExecutionHistory**
+- `idx_api_endpoint_id` (api_endpoint_id) - API 엔드포인트별 조회
+- `idx_executed_at` (executed_at) - 시간별 조회
+- `idx_is_success` (is_success) - 성공/실패별 조회
+
 ### 5.3 관계도
 
 ```
@@ -791,6 +1005,8 @@ BoardData 1:N BoardComment
 BoardData 1:N BoardAttachment
 
 BoardComment 1:N BoardComment (self-join)
+
+ApiEndpoint 1:N ApiExecutionHistory
 ```
 
 ---
@@ -925,6 +1141,33 @@ BoardComment 1:N BoardComment (self-join)
 | GET | `/redis/cache/set/{key}` | Set 전체 조회 |
 | GET | `/redis/cache/set/{key}/member?value={value}` | Set 멤버 존재 여부 |
 
+### 6.14 Proxy API 실행 (`/proxy`)
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| POST | `/proxy/execute` | API 실행 (데이터 기반) |
+
+### 6.15 API 엔드포인트 관리 (`/api-endpoints`)
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| POST | `/api-endpoints` | API 엔드포인트 생성 |
+| GET | `/api-endpoints?page={page}&size={size}` | API 엔드포인트 목록 |
+| GET | `/api-endpoints/enabled?page={page}&size={size}` | 활성화된 API 목록 |
+| GET | `/api-endpoints/{id}` | API 엔드포인트 조회 |
+| PUT | `/api-endpoints/{id}` | API 엔드포인트 수정 |
+| DELETE | `/api-endpoints/{id}` | API 엔드포인트 삭제 |
+| POST | `/api-endpoints/{id}/toggle` | 활성/비활성 토글 |
+
+### 6.16 API 실행 이력 (`/api-execution-history`)
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| GET | `/api-execution-history/{id}` | 실행 이력 조회 |
+| GET | `/api-execution-history/endpoint/{apiEndpointId}` | API 엔드포인트별 이력 |
+| GET | `/api-execution-history/api-code/{apiCode}` | API 코드별 이력 |
+| GET | `/api-execution-history/period?startDate={start}&endDate={end}` | 기간별 이력 |
+| GET | `/api-execution-history/success/{isSuccess}` | 성공/실패별 이력 |
+| GET | `/api-execution-history/recent/{apiCode}` | 최근 이력 (10건) |
+| GET | `/api-execution-history/stats/{apiEndpointId}` | 실행 통계 |
+
 ---
 
 ## 7. 테스트 현황
@@ -942,7 +1185,8 @@ BoardComment 1:N BoardComment (self-join)
 | Board | `BoardAttachmentServiceTest` | 14개 |
 | Redis | `DistributedLockServiceTest` | 11개 |
 | Redis | `RedisCacheServiceTest` | 17개 |
-| **합계** | **9개** | **84개+** |
+| Proxy API | `ApiEndpointServiceTest` | 12개 |
+| **합계** | **10개** | **96개+** |
 
 ### 7.2 테스트 커버리지
 
@@ -983,6 +1227,19 @@ BoardComment 1:N BoardComment (self-join)
 - ✅ 중복 추가 방지
 - ✅ 예외 처리
 
+**Proxy API 모듈**
+- ✅ API 엔드포인트 생성/수정/삭제
+- ✅ 중복 API 코드 검증
+- ✅ 잘못된 HTTP 메서드 검증
+- ✅ API 엔드포인트 조회
+- ✅ API 코드로 조회
+- ✅ API 엔드포인트 목록 조회
+- ✅ 활성화된 API 목록 조회
+- ✅ 활성/비활성 토글
+- ✅ 존재하지 않는 엔드포인트 처리
+- ✅ 논리적 삭제
+- ✅ 예외 처리
+
 ### 7.3 테스트 실행 방법
 
 ```bash
@@ -1010,7 +1267,7 @@ BoardComment 1:N BoardComment (self-join)
 |----------|--------|------|------|
 | 1 | API Key 관리 | API 키 생성/검증 | ✅ 완료 |
 | 2 | Redis 관리 | 분산 락 및 캐시 관리 | ✅ 완료 |
-| 3 | 프로그램 실행 (Proxy API) | 동적 API 라우팅 | 📋 예정 |
+| 3 | Proxy API | 동적 API 호출 및 실행 관리 | ✅ 완료 |
 | 4 | 배치 관리 | Spring Batch + Quartz | 📋 예정 |
 | 5 | 공통코드 관리 | 코드 관리 (Redis 활용) | 📋 예정 |
 | 6 | 세션 관리 | Redis 기반 세션 | 📋 예정 |
@@ -1058,26 +1315,26 @@ BoardComment 1:N BoardComment (self-join)
 
 | 구분 | 파일 수 |
 |------|---------|
-| Entity | 15개 |
-| DTO | 19개 (User 2, Program 1, Menu 2, ErrorHistory 1, ApiKey 3, Board 6, Redis 3) |
-| Repository | 15개 |
-| Service | 18개 (User 3, Program 1, Menu 1, ErrorHistory 1, ApiKey 2, Board 5, Redis 2) |
-| Controller | 13개 (User 1, Program 1, Menu 1, ApiKey 2, Board 5, Redis 2) |
-| Mapper | 14개 |
-| Exception | 15개 (Base 1, User 2, Program 2, Menu 2, ApiKey 2, Board 2, Redis 2) |
-| Constant | 11개 (Base 2, Board 4, ApiKey 1, Redis 2) |
-| Config | 6개 (Base 2, ApiKey 1, Board 1, Redis 1) |
+| Entity | 17개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2) |
+| DTO | 23개 (User 2, Program 1, Menu 2, ErrorHistory 1, ApiKey 3, Board 6, Redis 3, Proxy 4) |
+| Repository | 17개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2) |
+| Service | 21개 (User 3, Program 1, Menu 1, ErrorHistory 1, ApiKey 2, Board 5, Redis 2, Proxy 3) |
+| Controller | 16개 (User 1, Program 1, Menu 1, ApiKey 2, Board 5, Redis 2, Proxy 3) |
+| Mapper | 16개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2) |
+| Exception | 17개 (Base 1, User 2, Program 2, Menu 2, ApiKey 2, Board 2, Redis 2, Proxy 2) |
+| Constant | 12개 (Base 2, Board 4, ApiKey 1, Redis 2, Proxy 1) |
+| Config | 7개 (Base 2, ApiKey 1, Board 1, Redis 1, Proxy 1) |
 | Util | 3개 (ApiKey 1, Board 1) |
 | Interceptor | 2개 (Base 1, ApiKey 1) |
-| Test | 9개 (User 1, ApiKey 2, Board 4, Redis 2) |
-| **총계** | **140개** |
+| Test | 10개 (User 1, ApiKey 2, Board 4, Redis 2, Proxy 1) |
+| **총계** | **161개** |
 
 ### 9.2 코드 라인 수 (추정)
 
-- Java 소스 코드: ~11,500 lines
-- 테스트 코드: ~3,200 lines
+- Java 소스 코드: ~13,000 lines
+- 테스트 코드: ~3,700 lines
 - 설정 파일: ~300 lines
-- **총계: ~15,000 lines**
+- **총계: ~17,000 lines**
 
 ---
 
@@ -1099,6 +1356,7 @@ BoardComment 1:N BoardComment (self-join)
 | 2026-01-02 | 0.0.1 | 설정 파일 보완 (password 암호화 설정 추가) |
 | 2026-01-02 | 0.0.1 | Repository 쿼리 오류 수정 (aggregate 함수, 복합 필드명) |
 | 2026-01-06 | 0.0.1 | Redis 관리 모듈 완성 (분산 락, 캐시 관리, Spring Boot 표준 설정) |
+| 2026-01-06 | 0.0.1 | Proxy API 모듈 완성 (동적 API 호출, 실행 이력, 재시도 로직, RestTemplate) |
 
 ---
 
