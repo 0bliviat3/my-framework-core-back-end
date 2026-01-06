@@ -1,6 +1,6 @@
 # Framework Core Back-end 구현 현황
 
-> 최종 업데이트: 2026-01-02
+> 최종 업데이트: 2026-01-06
 
 ## 📋 목차
 - [1. 프로젝트 개요](#1-프로젝트-개요)
@@ -32,17 +32,20 @@ Spring Boot 기반의 엔터프라이즈 프레임워크 백엔드 시스템으�
 ### Backend Framework
 - Spring Boot 3.5.4
 - Spring Data JPA
+- Spring Data Redis (Lettuce)
 - Spring Security
 - Spring Batch
 - Quartz Scheduler
 
-### Database
+### Database & Cache
 - MariaDB (JDBC Driver 3.3.3)
+- Redis 6.x (Lettuce Client)
 - Hibernate ORM
 
 ### Libraries
 - Lombok (코드 간소화)
 - MapStruct 1.5.5 (DTO 매핑)
+- Apache Commons Pool2 (Redis 커넥션 풀)
 - AssertJ (테스트)
 
 ---
@@ -447,6 +450,188 @@ Spring Boot 기반의 엔터프라이즈 프레임워크 백엔드 시스템으�
 
 ---
 
+### 3.8 Redis 모듈 (분산 락 및 캐시 관리) ⭐ NEW
+
+#### ✅ 구현 파일 (총 16개)
+
+**Service (2개)**
+- `DistributedLockService.java` - 분산 락 구현 (SET NX EX + Lua Script)
+- `RedisCacheService.java` - 캐시 관리 (String, Hash, Set)
+
+**Controller (2개)**
+- `RedisLockController.java` - 분산 락 API
+- `RedisCacheController.java` - 캐시 관리 API
+
+**DTO (3개)**
+- `LockRequest.java` - 락 요청 DTO
+- `LockResponse.java` - 락 응답 DTO
+- `CacheRequest.java` - 캐시 요청 DTO
+
+**Config**
+- `RedisConfig.java` - Redis 설정 (JSON 직렬화 RedisTemplate)
+
+**Exception (2개)**
+- `RedisException.java` - Redis 관련 예외
+- `RedisExceptionMessage.java` - 예외 메시지 (10개 상수)
+
+**Constants (2개)**
+- `RedisKeyPrefix.java` - Redis 키 접두사
+- `RedisLockConstants.java` - 락 관련 상수
+
+**Test (2개, 총 28개 테스트)**
+- `DistributedLockServiceTest.java` - 11개 테스트
+- `RedisCacheServiceTest.java` - 17개 테스트
+
+**Dependencies**
+- `build.gradle` - Redis 의존성 추가 (spring-boot-starter-data-redis, lettuce-core, commons-pool2)
+- `application.yml` - Redis 설정 (Standalone/Sentinel/Cluster 예시)
+
+#### 📋 Redis 모듈 상세 기능
+
+**1. 분산 락 (DistributedLockService)**
+- ✅ Redis SET NX EX 기반 락 구현
+- ✅ UUID 기반 락 소유자 식별 (`{uuid}:{serverId}`)
+- ✅ Lua Script 기반 안전한 락 해제
+- ✅ 락 소유자 검증 (다른 서버의 락 해제 방지)
+- ✅ TTL 기반 자동 만료
+- ✅ 락 연장 (Extend Lock)
+- ✅ 락 존재 여부 확인
+- ✅ 락 소유자 조회
+- ✅ 락 TTL 조회
+- ✅ Timeout 기반 락 획득 재시도
+
+**Lua Script 예시**
+```lua
+-- 락 해제 (소유자 검증)
+if redis.call('get', KEYS[1]) == ARGV[1] then
+    return redis.call('del', KEYS[1])
+else
+    return 0
+end
+
+-- 락 연장 (소유자 검증)
+if redis.call('get', KEYS[1]) == ARGV[1] then
+    return redis.call('expire', KEYS[1], ARGV[2])
+else
+    return 0
+end
+```
+
+**2. 캐시 관리 (RedisCacheService)**
+
+**String 연산**
+- ✅ set(key, value) - 캐시 저장
+- ✅ set(key, value, ttl) - TTL 포함 저장
+- ✅ get(key) - 캐시 조회
+- ✅ delete(key) - 캐시 삭제
+- ✅ exists(key) - 존재 여부 확인
+- ✅ setTTL(key, ttl) - TTL 설정
+- ✅ getTTL(key) - TTL 조회
+- ✅ keys(pattern) - 패턴 매칭 키 조회
+
+**Hash 연산**
+- ✅ hSet(key, field, value) - 해시 필드 저장
+- ✅ hGet(key, field) - 해시 필드 조회
+- ✅ hGetAll(key) - 해시 전체 조회
+- ✅ hDelete(key, fields...) - 해시 필드 삭제
+- ✅ hExists(key, field) - 해시 필드 존재 여부
+
+**Set 연산**
+- ✅ sAdd(key, values...) - Set에 값 추가
+- ✅ sRemove(key, values...) - Set에서 값 제거
+- ✅ sMembers(key) - Set 전체 조회
+- ✅ sIsMember(key, value) - Set 멤버 존재 여부
+
+**3. 설정 관리 (RedisConfig)**
+- ✅ Spring Boot 표준 설정 활용
+- ✅ Standalone/Sentinel/Cluster 설정 전환 (설정 변경만으로 가능)
+- ✅ Lettuce Connection Factory 자동 설정
+- ✅ Connection Pooling (Apache Commons Pool2)
+- ✅ JSON 직렬화 RedisTemplate (GenericJackson2JsonRedisSerializer)
+- ✅ String 직렬화 StringRedisTemplate (자동 설정)
+
+**설정 예시 (application.yml)**
+```yaml
+# Standalone (현재 활성)
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+
+# Sentinel (주석 처리)
+# spring:
+#   data:
+#     redis:
+#       sentinel:
+#         master: mymaster
+#         nodes:
+#           - localhost:26379
+
+# Cluster (주석 처리)
+# spring:
+#   data:
+#     redis:
+#       cluster:
+#         nodes:
+#           - localhost:7000
+```
+
+**4. 주요 사용 사례**
+
+**배치/스케줄러 중복 실행 방지**
+```java
+String lockValue = lockService.acquireLock("BATCH:JOB:001", 300L);
+try {
+    // 배치 작업 실행
+} finally {
+    lockService.releaseLock("BATCH:JOB:001", lockValue);
+}
+```
+
+**세션 캐시**
+```java
+cacheService.set("SESSION:user123", userSessionData, 1800L); // 30분
+```
+
+**조회수 캐시**
+```java
+cacheService.hSet("BOARD:VIEW_COUNT", "post001", 1234);
+```
+
+**중복 요청 방지**
+```java
+if (cacheService.sIsMember("PROCESSED_REQUESTS", requestId)) {
+    throw new DuplicateRequestException();
+}
+cacheService.sAdd("PROCESSED_REQUESTS", requestId);
+```
+
+**5. 보안 및 안정성**
+- ✅ 락 소유자 검증으로 다른 서버의 락 해제 방지
+- ✅ TTL 기반 자동 만료로 데드락 방지
+- ✅ Lua Script로 원자적 연산 보장
+- ✅ Master 노드 전용 쓰기 (Sentinel/Cluster)
+- ✅ Connection Pool로 성능 최적화
+- ✅ 예외 처리 및 에러 로깅
+
+**6. 테스트 커버리지**
+- ✅ 분산 락 획득/해제/연장
+- ✅ 락 소유자 검증
+- ✅ Timeout 기반 재시도
+- ✅ TTL 자동 만료
+- ✅ String/Hash/Set 연산
+- ✅ 중복 방지
+- ✅ 예외 처리
+
+---
+
 ## 4. 아키텍처
 
 ### 4.1 패키지 구조
@@ -485,15 +670,23 @@ com.wan.framework
 │   ├── exception/          # 예외
 │   └── constant/           # 상수
 │
-└── board/                   # 게시판 모듈
-    ├── domain/             # 6개 엔티티
-    ├── dto/                # 6개 DTO
-    ├── repository/         # 6개 Repository
-    ├── service/            # 5개 Service
-    ├── web/                # 5개 Controller
-    ├── mapper/             # 6개 Mapper
-    ├── config/             # 파일 설정
-    ├── util/               # 파일 유틸리티
+├── board/                   # 게시판 모듈
+│   ├── domain/             # 6개 엔티티
+│   ├── dto/                # 6개 DTO
+│   ├── repository/         # 6개 Repository
+│   ├── service/            # 5개 Service
+│   ├── web/                # 5개 Controller
+│   ├── mapper/             # 6개 Mapper
+│   ├── config/             # 파일 설정
+│   ├── util/               # 파일 유틸리티
+│   ├── exception/          # 예외
+│   └── constant/           # 상수
+│
+└── redis/                   # Redis 모듈
+    ├── dto/                # 3개 DTO
+    ├── service/            # 2개 Service
+    ├── web/                # 2개 Controller
+    ├── config/             # Redis 설정
     ├── exception/          # 예외
     └── constant/           # 상수
 ```
@@ -703,6 +896,35 @@ BoardComment 1:N BoardComment (self-join)
 | GET | `/api-key-usage/{apiKeyId}/stats` | 사용 통계 |
 | GET | `/api-key-usage/{apiKeyId}/period?start={start}&end={end}` | 기간별 이력 |
 
+### 6.12 Redis 분산 락 (`/redis/locks`)
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| POST | `/redis/locks/acquire` | 분산 락 획득 |
+| POST | `/redis/locks/release` | 분산 락 해제 |
+| POST | `/redis/locks/extend` | 분산 락 연장 |
+| GET | `/redis/locks/exists?key={key}` | 락 존재 여부 확인 |
+| GET | `/redis/locks/owner?key={key}` | 락 소유자 조회 |
+| GET | `/redis/locks/ttl?key={key}` | 락 TTL 조회 |
+
+### 6.13 Redis 캐시 (`/redis/cache`)
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| POST | `/redis/cache` | 캐시 저장 (TTL 옵션) |
+| GET | `/redis/cache/{key}` | 캐시 조회 |
+| DELETE | `/redis/cache/{key}` | 캐시 삭제 |
+| GET | `/redis/cache/{key}/exists` | 캐시 존재 여부 |
+| PUT | `/redis/cache/{key}/ttl?seconds={seconds}` | TTL 설정 |
+| GET | `/redis/cache/{key}/ttl` | TTL 조회 |
+| GET | `/redis/cache/keys?pattern={pattern}` | 패턴 매칭 키 조회 |
+| POST | `/redis/cache/hash` | Hash 필드 저장 |
+| GET | `/redis/cache/hash/{key}/{field}` | Hash 필드 조회 |
+| GET | `/redis/cache/hash/{key}` | Hash 전체 조회 |
+| DELETE | `/redis/cache/hash/{key}/{field}` | Hash 필드 삭제 |
+| POST | `/redis/cache/set` | Set 추가 |
+| DELETE | `/redis/cache/set` | Set 제거 |
+| GET | `/redis/cache/set/{key}` | Set 전체 조회 |
+| GET | `/redis/cache/set/{key}/member?value={value}` | Set 멤버 존재 여부 |
+
 ---
 
 ## 7. 테스트 현황
@@ -718,7 +940,9 @@ BoardComment 1:N BoardComment (self-join)
 | Board | `BoardDataServiceTest` | 14개 |
 | Board | `BoardCommentServiceTest` | 11개 |
 | Board | `BoardAttachmentServiceTest` | 14개 |
-| **합계** | **7개** | **56개+** |
+| Redis | `DistributedLockServiceTest` | 11개 |
+| Redis | `RedisCacheServiceTest` | 17개 |
+| **합계** | **9개** | **84개+** |
 
 ### 7.2 테스트 커버리지
 
@@ -744,6 +968,19 @@ BoardComment 1:N BoardComment (self-join)
 - ✅ 계층형 댓글
 - ✅ 파일 업로드/다운로드
 - ✅ 권한 검증
+- ✅ 예외 처리
+
+**Redis 모듈**
+- ✅ 분산 락 획득/해제/연장
+- ✅ 락 소유자 검증
+- ✅ Timeout 기반 락 획득 재시도
+- ✅ TTL 자동 만료 테스트
+- ✅ 동시성 제어 (중복 락 획득 차단)
+- ✅ String 연산 (set, get, delete, exists, TTL)
+- ✅ Hash 연산 (hSet, hGet, hGetAll, hDelete, hExists)
+- ✅ Set 연산 (sAdd, sRemove, sMembers, sIsMember)
+- ✅ 패턴 매칭 키 조회
+- ✅ 중복 추가 방지
 - ✅ 예외 처리
 
 ### 7.3 테스트 실행 방법
@@ -772,8 +1009,8 @@ BoardComment 1:N BoardComment (self-join)
 | 우선순위 | 모듈명 | 설명 | 상태 |
 |----------|--------|------|------|
 | 1 | API Key 관리 | API 키 생성/검증 | ✅ 완료 |
-| 2 | 프로그램 실행 (Proxy API) | 동적 API 라우팅 | 📋 예정 |
-| 3 | Redis 관리 | 캐싱 및 세션 관리 | 📋 예정 |
+| 2 | Redis 관리 | 분산 락 및 캐시 관리 | ✅ 완료 |
+| 3 | 프로그램 실행 (Proxy API) | 동적 API 라우팅 | 📋 예정 |
 | 4 | 배치 관리 | Spring Batch + Quartz | 📋 예정 |
 | 5 | 공통코드 관리 | 코드 관리 (Redis 활용) | 📋 예정 |
 | 6 | 세션 관리 | Redis 기반 세션 | 📋 예정 |
@@ -822,25 +1059,25 @@ BoardComment 1:N BoardComment (self-join)
 | 구분 | 파일 수 |
 |------|---------|
 | Entity | 15개 |
-| DTO | 16개 |
+| DTO | 19개 (User 2, Program 1, Menu 2, ErrorHistory 1, ApiKey 3, Board 6, Redis 3) |
 | Repository | 15개 |
-| Service | 16개 |
-| Controller | 11개 |
+| Service | 18개 (User 3, Program 1, Menu 1, ErrorHistory 1, ApiKey 2, Board 5, Redis 2) |
+| Controller | 13개 (User 1, Program 1, Menu 1, ApiKey 2, Board 5, Redis 2) |
 | Mapper | 14개 |
-| Exception | 13개 |
-| Constant | 9개 |
-| Config | 4개 |
-| Util | 2개 |
-| Interceptor | 1개 |
-| Test | 7개 |
-| **총계** | **123개** |
+| Exception | 15개 (Base 1, User 2, Program 2, Menu 2, ApiKey 2, Board 2, Redis 2) |
+| Constant | 11개 (Base 2, Board 4, ApiKey 1, Redis 2) |
+| Config | 6개 (Base 2, ApiKey 1, Board 1, Redis 1) |
+| Util | 3개 (ApiKey 1, Board 1) |
+| Interceptor | 2개 (Base 1, ApiKey 1) |
+| Test | 9개 (User 1, ApiKey 2, Board 4, Redis 2) |
+| **총계** | **140개** |
 
 ### 9.2 코드 라인 수 (추정)
 
-- Java 소스 코드: ~10,000 lines
-- 테스트 코드: ~2,500 lines
-- 설정 파일: ~250 lines
-- **총계: ~12,750 lines**
+- Java 소스 코드: ~11,500 lines
+- 테스트 코드: ~3,200 lines
+- 설정 파일: ~300 lines
+- **총계: ~15,000 lines**
 
 ---
 
@@ -861,8 +1098,9 @@ BoardComment 1:N BoardComment (self-join)
 | 2026-01-02 | 0.0.1 | API Key 관리 모듈 완성 (3개 도메인, Bearer 인증 포함) |
 | 2026-01-02 | 0.0.1 | 설정 파일 보완 (password 암호화 설정 추가) |
 | 2026-01-02 | 0.0.1 | Repository 쿼리 오류 수정 (aggregate 함수, 복합 필드명) |
+| 2026-01-06 | 0.0.1 | Redis 관리 모듈 완성 (분산 락, 캐시 관리, Spring Boot 표준 설정) |
 
 ---
 
 **문서 작성자**: Claude Code
-**마지막 업데이트**: 2026-01-02
+**마지막 업데이트**: 2026-01-06

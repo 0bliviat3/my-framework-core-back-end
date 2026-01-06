@@ -20,14 +20,16 @@ Spring Boot 기반의 엔터프라이즈 프레임워크 백엔드 시스템입�
 
 ### Core Dependencies
 - **Spring Data JPA**: ORM 및 데이터 액세스
+- **Spring Data Redis**: Redis 캐싱 및 분산 락
 - **Spring Security**: 인증 및 권한 관리
 - **Spring Batch**: 배치 처리
 - **Quartz**: 스케줄링
 - **MapStruct**: DTO 매핑
 - **Lombok**: 코드 간소화
 
-### Database
+### Database & Cache
 - **MariaDB**: 메인 데이터베이스 (JDBC Driver 3.3.3)
+- **Redis**: 캐싱 및 분산 락 (Lettuce 클라이언트)
 
 ## 필수 요구사항
 
@@ -35,7 +37,8 @@ Spring Boot 기반의 엔터프라이즈 프레임워크 백엔드 시스템입�
 
 1. **Java 17** 이상
 2. **MariaDB 10.x** 이상
-3. **Gradle** (또는 내장된 Gradle Wrapper 사용)
+3. **Redis 6.x** 이상 (선택사항 - Redis 기능 사용 시)
+4. **Gradle** (또는 내장된 Gradle Wrapper 사용)
 
 ## 프로젝트 실행 방법
 
@@ -50,7 +53,29 @@ GRANT ALL PRIVILEGES ON framework.* TO 'framework_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-### 2. 애플리케이션 설정 파일 생성
+### 2. Redis 서버 실행 (선택사항)
+
+Redis 기능을 사용하려면 Redis 서버를 실행해야 합니다.
+
+**Docker 사용 (권장):**
+```bash
+docker run -d -p 6379:6379 --name redis redis:latest
+```
+
+**직접 설치:**
+- Windows: https://github.com/microsoftarchive/redis/releases
+- Linux: `sudo apt-get install redis-server`
+- Mac: `brew install redis`
+
+Redis 없이 실행하려면 `application.yml`에서 Redis 자동 설정을 제외:
+```yaml
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+```
+
+### 3. 애플리케이션 설정 파일 생성
 
 **반드시** 다음 설정 파일을 생성해야 합니다:
 
@@ -87,6 +112,43 @@ spring:
       initialize-schema: always
     job:
       enabled: false  # 시작 시 자동 실행 방지
+
+  # Redis 설정 (선택사항)
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+# 비밀번호 암호화 설정
+password:
+  salt:
+    size: 16
+  iteration: 10000
+
+# 파일 업로드 설정
+file:
+  upload:
+    upload-dir: uploads/board
+    max-file-size: 10485760  # 10MB
+    max-request-size: 52428800  # 50MB
+    allowed-extensions:
+      - jpg
+      - jpeg
+      - png
+      - pdf
+      - doc
+      - docx
+      - xls
+      - xlsx
+      - txt
+      - zip
 
 server:
   port: 8080
@@ -177,21 +239,19 @@ JPA의 `ddl-auto: update` 설정으로 인해 애플리케이션 시작 시 자�
 ## 구현된 모듈
 
 ### ✅ 완료된 모듈
-- **사용자 관리 모듈**: 회원가입, 로그인, 사용자 CRUD
+- **사용자 관리 모듈**: 회원가입, 로그인, 사용자 CRUD, PBKDF2 비밀번호 암호화
 - **프로그램 관리 모듈**: 프로그램 등록 및 관리
 - **메뉴 관리 모듈**: 계층형 메뉴 구조 관리, 역할 기반 권한
+- **게시판 모듈**: 동적 게시판 생성, 게시글/댓글 관리, 파일 첨부
+- **API Key 관리 모듈**: API Key 생성/검증, Bearer 인증, 권한 관리, 사용 이력
+- **Redis 관리 모듈**: 분산 락, 캐시 관리, Standalone/Sentinel/Cluster 지원
 - **예외 처리 모듈**: 전역 예외 처리 및 히스토리 저장
 
-### 🔄 진행 중인 모듈
-- **동적 게시판 생성 모듈**: 게시판 메타 테이블 구현 완료
-
 ### 📋 예정된 모듈
-- API key 관리 모듈
-- 프로그램 실행 모듈 (proxy api)
-- 레디스 관리 모듈
-- 배치 관리 모듈 (레디스를 사용한 고가용성 배치 처리)
-- 공통코드 관리 모듈 (레디스 활용 공통코드 관리)
-- 세션관리 모듈 (레디스 활용 세션관리)
+- 프로그램 실행 모듈 (Proxy API)
+- 배치 관리 모듈 (Redis 기반 고가용성 배치 처리)
+- 공통코드 관리 모듈 (Redis 활용)
+- 세션 관리 모듈 (Redis 활용)
 
 ## API 엔드포인트
 
@@ -227,6 +287,30 @@ JPA의 `ddl-auto: update` 설정으로 인해 애플리케이션 시작 시 자�
 - `POST /board-metas`: 게시판 생성
 - `PUT /board-metas/{id}`: 게시판 수정
 - `DELETE /board-metas/{id}`: 게시판 삭제
+- `POST /board-metas/{id}/clone`: 게시판 복제
+
+### API Key 관리
+- `POST /api-keys`: API Key 생성
+- `GET /api-keys`: API Key 목록 조회
+- `GET /api-keys/{id}`: API Key 조회
+- `POST /api-keys/{id}/toggle`: API Key 활성/비활성 전환
+- `DELETE /api-keys/{id}`: API Key 삭제
+- `POST /api-keys/{id}/permissions`: 권한 추가
+- `DELETE /api-keys/{id}/permissions/{permission}`: 권한 삭제
+
+### Redis 분산 락
+- `POST /redis/locks/acquire`: 분산 락 획득
+- `DELETE /redis/locks/release`: 분산 락 해제
+- `PUT /redis/locks/extend`: 분산 락 연장
+- `GET /redis/locks/exists`: 락 존재 확인
+- `GET /redis/locks/ttl`: 락 TTL 조회
+
+### Redis 캐시
+- `POST /redis/cache`: 캐시 저장
+- `GET /redis/cache/{key}`: 캐시 조회
+- `DELETE /redis/cache/{key}`: 캐시 삭제
+- `GET /redis/cache/keys`: 패턴 매칭 조회
+- Hash, Set 연산 API
 
 ## 프론트엔드 연동 가이드
 
