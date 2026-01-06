@@ -1119,6 +1119,278 @@ CREATE TABLE t_batch_execution (
 
 ---
 
+### 3.9 Code 모듈 (공통코드 관리) ⭐ NEW
+
+#### ✅ 구현 파일 (총 14개)
+
+**Domain & DTO**
+- `CodeGroup.java` - 공통코드 그룹 엔티티
+- `CodeItem.java` - 공통코드 항목 엔티티
+- `CodeGroupDTO.java` - 코드 그룹 DTO
+- `CodeItemDTO.java` - 코드 항목 DTO
+
+**Repository**
+- `CodeGroupRepository.java` - 코드 그룹 Repository
+- `CodeItemRepository.java` - 코드 항목 Repository
+
+**Service**
+- `CodeGroupService.java` - 코드 그룹 CRUD 및 Redis 캐시 관리
+- `CodeItemService.java` - 코드 항목 CRUD 및 Redis 캐시 관리
+
+**Controller**
+- `CodeGroupController.java` - 코드 그룹 관리 API
+- `CodeItemController.java` - 코드 항목 관리 API
+
+**Mapper**
+- `CodeGroupMapper.java` - Entity ↔ DTO 변환
+- `CodeItemMapper.java` - Entity ↔ DTO 변환
+
+**Exception**
+- `CodeException.java` - 공통코드 관련 예외
+- `CodeExceptionMessage.java` - 예외 메시지 상수 (10개)
+
+**Test**
+- `CodeGroupServiceTest.java` - 코드 그룹 서비스 테스트 (16개 테스트)
+- `CodeItemServiceTest.java` - 코드 항목 서비스 테스트 (17개 테스트)
+
+**주요 기능:**
+
+1. **코드 그룹 관리**
+   - 그룹 코드를 PK로 사용
+   - 그룹명, 설명, 정렬 순서 관리
+   - 활성화/비활성화 토글
+   - 하위 코드 항목 존재 시 삭제 방지
+
+2. **코드 항목 관리**
+   - 그룹별 코드 값 및 코드명 관리
+   - 추가 속성 3개 제공 (attribute1, attribute2, attribute3)
+   - 정렬 순서 관리
+   - 활성화/비활성화 토글
+
+3. **Redis 캐싱 전략**
+   - 그룹 단위 캐싱 (TTL: 1시간)
+   - 조회 시 캐시 우선 조회 (Cache-Aside Pattern)
+   - 변경 시 자동 캐시 갱신
+   - 전체 캐시 강제 갱신 API 제공
+
+4. **다중 서버 환경 지원**
+   - Redis 중앙 캐시로 서버 간 데이터 일관성 보장
+   - 캐시 갱신 시 모든 서버에 즉시 반영
+
+5. **검색 및 필터링**
+   - 그룹명으로 검색
+   - 코드명으로 검색
+   - 활성화된 코드만 조회
+   - 그룹 코드 + 코드 값으로 직접 조회
+
+6. **다양한 조회 형식**
+   - 목록 조회 (페이징/비페이징)
+   - Map 형식 조회 (codeValue → CodeItemDTO)
+   - 그룹별 코드 조회
+
+**API 엔드포인트:**
+
+**코드 그룹 API:**
+```http
+POST   /code-groups                          # 그룹 생성
+PUT    /code-groups/{groupCode}              # 그룹 수정
+DELETE /code-groups/{groupCode}              # 그룹 삭제
+GET    /code-groups/{groupCode}              # 그룹 조회
+GET    /code-groups                          # 전체 그룹 조회 (페이징)
+GET    /code-groups/list                     # 전체 그룹 조회 (목록)
+GET    /code-groups/enabled                  # 활성화된 그룹 조회
+GET    /code-groups/search?groupName={name}  # 그룹명 검색
+PATCH  /code-groups/{groupCode}/toggle       # 활성/비활성 토글
+POST   /code-groups/cache/refresh            # 전체 캐시 갱신
+```
+
+**코드 항목 API:**
+```http
+POST   /code-items                                 # 항목 생성
+PUT    /code-items/{id}                            # 항목 수정
+DELETE /code-items/{id}                            # 항목 삭제
+GET    /code-items/{id}                            # 항목 조회
+GET    /code-items/group/{groupCode}               # 그룹별 코드 조회
+GET    /code-items/group/{groupCode}/enabled       # 그룹별 활성화 코드
+GET    /code-items                                 # 전체 코드 조회 (페이징)
+GET    /code-items/search?codeName={name}          # 코드명 검색
+GET    /code-items/value?groupCode={g}&codeValue={v}  # 그룹+값으로 조회
+GET    /code-items/group/{groupCode}/map           # Map 형식 조회
+PATCH  /code-items/{id}/toggle                     # 활성/비활성 토글
+POST   /code-items/cache/refresh/{groupCode}       # 그룹별 캐시 갱신
+POST   /code-items/cache/refresh                   # 전체 캐시 갱신
+```
+
+**Request 예시 (그룹 생성):**
+```json
+{
+  "groupCode": "USER_STATUS",
+  "groupName": "사용자 상태",
+  "description": "사용자 계정 상태 코드",
+  "enabled": true,
+  "sortOrder": 1
+}
+```
+
+**Request 예시 (항목 생성):**
+```json
+{
+  "groupCode": "USER_STATUS",
+  "codeValue": "ACTIVE",
+  "codeName": "활성",
+  "description": "정상 활성화 상태",
+  "enabled": true,
+  "sortOrder": 1,
+  "attribute1": "color:green",
+  "attribute2": null,
+  "attribute3": null
+}
+```
+
+**Response 예시 (그룹별 코드 조회):**
+```json
+[
+  {
+    "id": 1,
+    "groupCode": "USER_STATUS",
+    "codeValue": "ACTIVE",
+    "codeName": "활성",
+    "description": "정상 활성화 상태",
+    "enabled": true,
+    "sortOrder": 1,
+    "attribute1": "color:green",
+    "attribute2": null,
+    "attribute3": null,
+    "dataState": "I",
+    "createTime": "2026-01-06T14:30:00",
+    "modifiedTime": null
+  },
+  {
+    "id": 2,
+    "groupCode": "USER_STATUS",
+    "codeValue": "INACTIVE",
+    "codeName": "비활성",
+    "description": "계정 비활성화 상태",
+    "enabled": true,
+    "sortOrder": 2,
+    "attribute1": "color:gray",
+    "attribute2": null,
+    "attribute3": null,
+    "dataState": "I",
+    "createTime": "2026-01-06T14:31:00",
+    "modifiedTime": null
+  }
+]
+```
+
+**데이터베이스 스키마:**
+
+```sql
+-- 공통코드 그룹
+CREATE TABLE t_code_group (
+  group_code VARCHAR(50) PRIMARY KEY,
+  group_name VARCHAR(100) NOT NULL,
+  description VARCHAR(500),
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  sort_order INT,
+  create_time DATETIME NOT NULL,
+  modified_time DATETIME,
+  data_state VARCHAR(1) NOT NULL,
+  INDEX idx_enabled (enabled),
+  INDEX idx_sort_order (sort_order)
+);
+
+-- 공통코드 항목
+CREATE TABLE t_code_item (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  group_code VARCHAR(50) NOT NULL,
+  code_value VARCHAR(50) NOT NULL,
+  code_name VARCHAR(100) NOT NULL,
+  description VARCHAR(500),
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  sort_order INT,
+  attribute1 VARCHAR(100),
+  attribute2 VARCHAR(100),
+  attribute3 VARCHAR(100),
+  create_time DATETIME NOT NULL,
+  modified_time DATETIME,
+  data_state VARCHAR(1) NOT NULL,
+  INDEX idx_group_code (group_code),
+  INDEX idx_enabled (enabled),
+  INDEX idx_sort_order (sort_order),
+  UNIQUE KEY uk_group_value (group_code, code_value, data_state),
+  FOREIGN KEY (group_code) REFERENCES t_code_group(group_code)
+);
+```
+
+**Redis 캐시 키 구조:**
+
+```
+# 그룹별 캐시
+CODE:GROUP:{groupCode}          # 개별 그룹 정보
+CODE:ALL_GROUPS                 # 전체 그룹 목록
+
+# 항목별 캐시
+CODE:ITEMS:{groupCode}          # 그룹별 코드 항목 목록
+```
+
+**사용 시나리오:**
+
+1. **프론트엔드 Select 박스 구성**
+   ```javascript
+   // 활성화된 사용자 상태 코드 조회
+   GET /code-items/group/USER_STATUS/enabled
+
+   // 결과를 Select 박스 옵션으로 사용
+   codes.forEach(code => {
+     option.value = code.codeValue;
+     option.text = code.codeName;
+   });
+   ```
+
+2. **배치 작업 초기 데이터 로드**
+   ```java
+   // 애플리케이션 시작 시 전체 캐시 갱신
+   POST /code-groups/cache/refresh
+   POST /code-items/cache/refresh
+
+   // 이후 모든 조회는 Redis에서 빠르게 응답
+   ```
+
+3. **코드 값을 이름으로 변환**
+   ```java
+   // 코드 값으로 직접 조회
+   GET /code-items/value?groupCode=USER_STATUS&codeValue=ACTIVE
+   // → { codeName: "활성" }
+   ```
+
+4. **Map 형식으로 빠른 조회**
+   ```javascript
+   // Map 형식 조회 (O(1) 접근)
+   GET /code-items/group/USER_STATUS/map
+
+   // 결과: { "ACTIVE": {...}, "INACTIVE": {...} }
+   const statusName = codeMap["ACTIVE"].codeName;
+   ```
+
+**테스트 커버리지:**
+
+- `CodeGroupServiceTest`: 16개 테스트
+  - 생성/수정/삭제/조회
+  - 중복 검증
+  - 캐시 히트/미스
+  - 토글 기능
+  - 전체 캐시 갱신
+
+- `CodeItemServiceTest`: 17개 테스트
+  - 생성/수정/삭제/조회
+  - 그룹별 조회
+  - 캐시 관리
+  - 검증 로직
+  - Map 형식 조회
+
+---
+
 ## 4. 아키텍처
 
 ### 4.1 패키지 구조
@@ -1188,17 +1460,27 @@ com.wan.framework
 │   ├── exception/          # 예외
 │   └── constant/           # 상수
 │
-└── batch/                   # Batch 모듈
+├── batch/                   # Batch 모듈
+│   ├── domain/             # 2개 엔티티
+│   ├── dto/                # 3개 DTO
+│   ├── repository/         # 2개 Repository
+│   ├── service/            # 4개 Service
+│   ├── web/                # 2개 Controller
+│   ├── mapper/             # 2개 Mapper
+│   ├── config/             # 2개 Config (Quartz, Initializer)
+│   ├── job/                # 1개 QuartzBatchJob
+│   ├── exception/          # 예외
+│   └── constant/           # 상수
+│
+└── code/                    # Code 모듈 ⭐ NEW
     ├── domain/             # 2개 엔티티
-    ├── dto/                # 3개 DTO
+    ├── dto/                # 2개 DTO
     ├── repository/         # 2개 Repository
-    ├── service/            # 4개 Service
+    ├── service/            # 2개 Service
     ├── web/                # 2개 Controller
     ├── mapper/             # 2개 Mapper
-    ├── config/             # 2개 Config (Quartz, Initializer)
-    ├── job/                # 1개 QuartzBatchJob
     ├── exception/          # 예외
-    └── constant/           # 상수 (3개)
+    └── constant/           # 상수
 ```
 
 ### 4.2 계층 구조
@@ -1655,27 +1937,27 @@ ApiEndpoint 1:N ApiExecutionHistory
 
 | 구분 | 파일 수 |
 |------|---------|
-| Entity | 19개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2) |
-| DTO | 26개 (User 2, Program 1, Menu 2, ErrorHistory 1, ApiKey 3, Board 6, Redis 3, Proxy 4, Batch 3) |
-| Repository | 19개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2) |
-| Service | 25개 (User 3, Program 1, Menu 1, ErrorHistory 1, ApiKey 2, Board 5, Redis 2, Proxy 3, Batch 4) |
-| Controller | 18개 (User 1, Program 1, Menu 1, ApiKey 2, Board 5, Redis 2, Proxy 3, Batch 2) |
-| Mapper | 18개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2) |
-| Exception | 19개 (Base 1, User 2, Program 2, Menu 2, ApiKey 2, Board 2, Redis 2, Proxy 2, Batch 2) |
-| Constant | 16개 (Base 2, Board 4, ApiKey 1, Redis 2, Proxy 1, Batch 4) |
+| Entity | 21개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2, Code 2) |
+| DTO | 28개 (User 2, Program 1, Menu 2, ErrorHistory 1, ApiKey 3, Board 6, Redis 3, Proxy 4, Batch 3, Code 2) |
+| Repository | 21개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2, Code 2) |
+| Service | 27개 (User 3, Program 1, Menu 1, ErrorHistory 1, ApiKey 2, Board 5, Redis 2, Proxy 3, Batch 4, Code 2) |
+| Controller | 20개 (User 1, Program 1, Menu 1, ApiKey 2, Board 5, Redis 2, Proxy 3, Batch 2, Code 2) |
+| Mapper | 20개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2, Code 2) |
+| Exception | 21개 (Base 1, User 2, Program 2, Menu 2, ApiKey 2, Board 2, Redis 2, Proxy 2, Batch 2, Code 2) |
+| Constant | 17개 (Base 2, Board 4, ApiKey 1, Redis 2, Proxy 1, Batch 4, Code 1) |
 | Config | 10개 (Base 2, ApiKey 1, Board 1, Redis 1, Proxy 1, Batch 2) |
 | Job | 1개 (Batch 1 - QuartzBatchJob) |
 | Util | 3개 (ApiKey 1, Board 1, Batch 1 - Initializer) |
 | Interceptor | 2개 (Base 1, ApiKey 1) |
-| Test | 13개 (User 1, ApiKey 2, Board 4, Redis 2, Proxy 1, Batch 3) |
-| **총계** | **189개** |
+| Test | 15개 (User 1, ApiKey 2, Board 4, Redis 2, Proxy 1, Batch 3, Code 2) |
+| **총계** | **206개** |
 
 ### 9.2 코드 라인 수 (추정)
 
-- Java 소스 코드: ~15,500 lines
-- 테스트 코드: ~5,000 lines
+- Java 소스 코드: ~17,500 lines
+- 테스트 코드: ~5,500 lines
 - 설정 파일: ~400 lines
-- **총계: ~20,900 lines**
+- **총계: ~23,400 lines**
 
 ---
 

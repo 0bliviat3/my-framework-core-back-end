@@ -247,10 +247,10 @@ JPA의 `ddl-auto: update` 설정으로 인해 애플리케이션 시작 시 자�
 - **Redis 관리 모듈**: 분산 락, 캐시 관리, Standalone/Sentinel/Cluster 지원
 - **Proxy API 모듈**: 동적 API 호출, 실행 이력 관리, 재시도 로직, 배치/스케줄러 연동
 - **배치 관리 모듈**: Quartz 스케줄러 기반, CRON/INTERVAL 스케줄, Redis 분산 락, Proxy API 통합, 자동 재시도
+- **공통코드 관리 모듈**: 코드 그룹/항목 관리, Redis 캐싱, 다중 서버 지원, 활성화/비활성화
 - **예외 처리 모듈**: 전역 예외 처리 및 히스토리 저장
 
 ### 📋 예정된 모듈
-- 공통코드 관리 모듈 (Redis 활용)
 - 세션 관리 모듈 (Redis 활용)
 
 ## API 엔드포인트
@@ -337,6 +337,31 @@ JPA의 `ddl-auto: update` 설정으로 인해 애플리케이션 시작 시 자�
 - `GET /batch-executions/status/{status}`: 상태별 실행 이력
 - `GET /batch-executions/stats/{batchJobId}`: 배치 실행 통계
 - `GET /batch-executions/retry-targets`: 재시도 대상 조회
+
+### 공통코드 관리
+- `POST /code-groups`: 코드 그룹 생성
+- `PUT /code-groups/{groupCode}`: 코드 그룹 수정
+- `DELETE /code-groups/{groupCode}`: 코드 그룹 삭제
+- `GET /code-groups/{groupCode}`: 코드 그룹 조회
+- `GET /code-groups`: 코드 그룹 목록 조회 (페이징)
+- `GET /code-groups/list`: 전체 그룹 조회 (목록)
+- `GET /code-groups/enabled`: 활성화된 그룹 조회
+- `GET /code-groups/search`: 그룹명으로 검색
+- `PATCH /code-groups/{groupCode}/toggle`: 그룹 활성/비활성 토글
+- `POST /code-groups/cache/refresh`: 전체 그룹 캐시 갱신
+- `POST /code-items`: 코드 항목 생성
+- `PUT /code-items/{id}`: 코드 항목 수정
+- `DELETE /code-items/{id}`: 코드 항목 삭제
+- `GET /code-items/{id}`: 코드 항목 조회
+- `GET /code-items/group/{groupCode}`: 그룹별 코드 조회
+- `GET /code-items/group/{groupCode}/enabled`: 그룹별 활성화된 코드 조회
+- `GET /code-items`: 전체 코드 조회 (페이징)
+- `GET /code-items/search`: 코드명으로 검색
+- `GET /code-items/value`: 그룹 코드와 코드 값으로 조회
+- `GET /code-items/group/{groupCode}/map`: 그룹별 코드 Map 조회
+- `PATCH /code-items/{id}/toggle`: 코드 항목 활성/비활성 토글
+- `POST /code-items/cache/refresh/{groupCode}`: 그룹별 캐시 갱신
+- `POST /code-items/cache/refresh`: 전체 캐시 갱신
 
 ## 프론트엔드 연동 가이드
 
