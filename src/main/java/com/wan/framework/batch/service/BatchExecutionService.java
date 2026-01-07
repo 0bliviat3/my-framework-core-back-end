@@ -90,8 +90,13 @@ public class BatchExecutionService {
             execution.setStatus(BatchStatus.RUNNING.name());
             BatchExecution savedExecution = batchExecutionRepository.save(execution);
 
-            // Proxy API 실행
-            ProxyExecutionResponse proxyResponse = executeProxyApi(batchJob, executionId, executedBy);
+            // Proxy API 실행 (타임아웃 체크 포함)
+            ProxyExecutionResponse proxyResponse = executeProxyApiWithTimeout(
+                    batchJob,
+                    executionId,
+                    executedBy,
+                    savedExecution
+            );
 
             // 실행 완료 처리
             completeExecution(savedExecution, proxyResponse);
@@ -203,6 +208,79 @@ public class BatchExecutionService {
         log.info("Retry execution created: {}", newExecutionId);
 
         return batchExecutionMapper.toDto(retryExecution);
+    }
+
+    /**
+     * Proxy API 실행 (타임아웃 체크 포함)
+     */
+    private ProxyExecutionResponse executeProxyApiWithTimeout(
+            BatchJob batchJob,
+            String executionId,
+            String executedBy,
+            BatchExecution execution) {
+
+        LocalDateTime startTime = LocalDateTime.now();
+        long timeoutMillis = batchJob.getTimeoutSeconds() * 1000L;
+
+        try {
+            // 실행 파라미터 준비
+            Map<String, Object> parameters = prepareExecutionParameters(batchJob, executionId);
+
+            // Proxy API 요청 생성
+            ProxyExecutionRequest proxyRequest = ProxyExecutionRequest.builder()
+                    .apiCode(batchJob.getProxyApiCode())
+                    .parameters(parameters)
+                    .executionTrigger("BATCH")
+                    .executedBy(executedBy)
+                    .build();
+
+            // API 엔드포인트 조회
+            var endpoint = apiEndpointService.getApiEndpointByCode(batchJob.getProxyApiCode());
+
+            // API 실행
+            ProxyExecutionResponse response = apiExecutionService.execute(endpoint, proxyRequest);
+
+            // 실행 시간 체크
+            long executionTime = Duration.between(startTime, LocalDateTime.now()).toMillis();
+            if (executionTime > timeoutMillis) {
+                log.warn("Batch execution timeout: {} ({}ms > {}ms)",
+                        batchJob.getBatchId(), executionTime, timeoutMillis);
+
+                // 타임아웃 상태로 업데이트
+                execution.setStatus(BatchStatus.TIMEOUT.name());
+                execution.setEndTime(LocalDateTime.now());
+                execution.setExecutionTimeMs(executionTime);
+                execution.setErrorMessage(String.format("Execution timeout: %dms exceeded limit of %dms",
+                        executionTime, timeoutMillis));
+                batchExecutionRepository.save(execution);
+
+                throw new BatchException(BatchExceptionMessage.BATCH_TIMEOUT);
+            }
+
+            return response;
+
+        } catch (Exception e) {
+            // 실행 시간 체크
+            long executionTime = Duration.between(startTime, LocalDateTime.now()).toMillis();
+            if (executionTime > timeoutMillis) {
+                log.error("Batch execution timeout during error: {} ({}ms > {}ms)",
+                        batchJob.getBatchId(), executionTime, timeoutMillis);
+
+                // 타임아웃 상태로 업데이트
+                execution.setStatus(BatchStatus.TIMEOUT.name());
+                execution.setEndTime(LocalDateTime.now());
+                execution.setExecutionTimeMs(executionTime);
+                execution.setErrorMessage(String.format("Execution timeout with error: %dms exceeded limit of %dms - %s",
+                        executionTime, timeoutMillis, e.getMessage()));
+                execution.setStackTrace(getStackTrace(e));
+                batchExecutionRepository.save(execution);
+
+                throw new BatchException(BatchExceptionMessage.BATCH_TIMEOUT, e);
+            }
+
+            log.error("Proxy API execution failed: {}", e.getMessage());
+            throw new BatchException(BatchExceptionMessage.PROXY_API_EXECUTION_FAILED, e);
+        }
     }
 
     /**

@@ -41,6 +41,9 @@ class BatchJobServiceTest {
     @Mock
     private BatchSchedulerService batchSchedulerService;
 
+    @Mock
+    private com.wan.framework.batch.repository.BatchExecutionRepository batchExecutionRepository;
+
     @InjectMocks
     private BatchJobService batchJobService;
 
@@ -78,7 +81,7 @@ class BatchJobServiceTest {
                 .maxRetryCount(3)
                 .retryIntervalSeconds(60)
                 .timeoutSeconds(300)
-                .dataState(DataStateCode.D)
+                .dataState(DataStateCode.I)
                 .build();
     }
 
@@ -152,6 +155,8 @@ class BatchJobServiceTest {
         // given
         given(batchJobRepository.findById(anyLong()))
                 .willReturn(Optional.of(testEntity));
+        given(batchExecutionRepository.findByBatchIdAndStatus(anyString(), anyString()))
+                .willReturn(Optional.empty());
         given(batchJobRepository.save(any(BatchJob.class)))
                 .willReturn(testEntity);
         given(batchJobMapper.toDto(any(BatchJob.class)))
@@ -185,6 +190,8 @@ class BatchJobServiceTest {
         // given
         given(batchJobRepository.findById(anyLong()))
                 .willReturn(Optional.of(testEntity));
+        given(batchExecutionRepository.findByBatchIdAndStatus(anyString(), anyString()))
+                .willReturn(Optional.empty());
         given(batchJobRepository.save(any(BatchJob.class)))
                 .willReturn(testEntity);
 

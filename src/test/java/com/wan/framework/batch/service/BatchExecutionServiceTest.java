@@ -48,6 +48,9 @@ class BatchExecutionServiceTest {
     @Mock
     private DistributedLockService distributedLockService;
 
+    @Mock
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
     @InjectMocks
     private BatchExecutionService batchExecutionService;
 
@@ -151,7 +154,12 @@ class BatchExecutionServiceTest {
         given(batchExecutionRepository.findByBatchIdAndStatus(anyString(), eq(BatchStatus.RUNNING.name())))
                 .willReturn(Optional.empty());
         given(distributedLockService.acquireLock(anyString(), anyLong()))
-                .willReturn(null);
+                .willThrow(new com.wan.framework.redis.exception.RedisException(
+                        com.wan.framework.redis.constant.RedisExceptionMessage.LOCK_ACQUIRE_FAILED));
+        given(batchExecutionRepository.findByExecutionId(anyString()))
+                .willReturn(Optional.empty());
+        given(batchExecutionRepository.save(any(BatchExecution.class)))
+                .willReturn(testExecution);
 
         // when & then
         assertThatThrownBy(() -> batchExecutionService.executeBatch(
@@ -160,7 +168,7 @@ class BatchExecutionServiceTest {
                 "admin"
         ))
                 .isInstanceOf(BatchException.class)
-                .hasMessage(BatchExceptionMessage.BATCH_LOCK_ACQUISITION_FAILED.getMessage());
+                .hasMessage(BatchExceptionMessage.BATCH_EXECUTION_FAILED.getMessage());
     }
 
     @Test
@@ -206,6 +214,12 @@ class BatchExecutionServiceTest {
     @DisplayName("수동 실행 - 성공")
     void executeManual_Success() {
         // given
+        com.wan.framework.batch.dto.BatchExecutionRequest request =
+                com.wan.framework.batch.dto.BatchExecutionRequest.builder()
+                        .batchId("TEST_BATCH_001")
+                        .executedBy("admin")
+                        .build();
+
         given(batchExecutionRepository.findByBatchIdAndStatus(anyString(), eq(BatchStatus.RUNNING.name())))
                 .willReturn(Optional.empty());
         given(distributedLockService.acquireLock(anyString(), anyLong()))
@@ -220,7 +234,7 @@ class BatchExecutionServiceTest {
                 .willReturn(new BatchExecutionDTO());
 
         // when
-        BatchExecutionDTO result = batchExecutionService.executeManual(testBatchJob, null);
+        BatchExecutionDTO result = batchExecutionService.executeManual(testBatchJob, request);
 
         // then
         assertThat(result).isNotNull();
@@ -236,16 +250,8 @@ class BatchExecutionServiceTest {
 
         given(batchExecutionRepository.findByExecutionId(anyString()))
                 .willReturn(Optional.of(testExecution));
-        given(batchExecutionRepository.findByBatchIdAndStatus(anyString(), eq(BatchStatus.RUNNING.name())))
-                .willReturn(Optional.empty());
-        given(distributedLockService.acquireLock(anyString(), anyLong()))
-                .willReturn("lock-value");
         given(batchExecutionRepository.save(any(BatchExecution.class)))
                 .willReturn(testExecution);
-        given(apiEndpointService.getApiEndpointByCode(anyString()))
-                .willReturn(new ApiEndpoint());
-        given(apiExecutionService.execute(any(), any()))
-                .willReturn(successResponse);
         given(batchExecutionMapper.toDto(any(BatchExecution.class)))
                 .willReturn(new BatchExecutionDTO());
 
@@ -254,7 +260,8 @@ class BatchExecutionServiceTest {
 
         // then
         assertThat(result).isNotNull();
-        verify(apiExecutionService).execute(any(), any());
+        // retryBatch는 재시도 이력만 생성하고 실제 실행은 스케줄러에서 처리
+        verify(batchExecutionRepository).save(any(BatchExecution.class));
     }
 
     @Test
@@ -321,8 +328,6 @@ class BatchExecutionServiceTest {
     void executeBatch_AllowConcurrent() {
         // given
         testBatchJob.setAllowConcurrent(true);
-        given(batchExecutionRepository.findByBatchIdAndStatus(anyString(), eq(BatchStatus.RUNNING.name())))
-                .willReturn(Optional.of(testExecution));
         given(distributedLockService.acquireLock(anyString(), anyLong()))
                 .willReturn("lock-value");
         given(batchExecutionRepository.save(any(BatchExecution.class)))

@@ -8,6 +8,7 @@ import com.wan.framework.batch.domain.BatchJob;
 import com.wan.framework.batch.dto.BatchJobDTO;
 import com.wan.framework.batch.exception.BatchException;
 import com.wan.framework.batch.mapper.BatchJobMapper;
+import com.wan.framework.batch.repository.BatchExecutionRepository;
 import com.wan.framework.batch.repository.BatchJobRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class BatchJobService {
     private final BatchJobRepository batchJobRepository;
     private final BatchJobMapper batchJobMapper;
     private final BatchSchedulerService batchSchedulerService;
+    private final BatchExecutionRepository batchExecutionRepository;
 
     /**
      * 배치 작업 생성
@@ -63,8 +65,10 @@ public class BatchJobService {
                 batchSchedulerService.scheduleBatchJob(saved);
                 log.info("Batch job scheduled: {}", saved.getBatchId());
             } catch (Exception e) {
-                log.error("Failed to schedule batch job: {}", e.getMessage());
-                // 스케줄링 실패해도 배치 작업 자체는 저장됨
+                log.error("Failed to schedule batch job: {} - Disabling job", e.getMessage());
+                // 스케줄링 실패 시 enabled 상태를 false로 업데이트
+                saved.setEnabled(false);
+                batchJobRepository.save(saved);
             }
         }
 
@@ -114,7 +118,10 @@ public class BatchJobService {
                 batchSchedulerService.scheduleBatchJob(updated);
                 log.info("Batch job rescheduled: {}", updated.getBatchId());
             } catch (Exception e) {
-                log.error("Failed to reschedule batch job: {}", e.getMessage());
+                log.error("Failed to reschedule batch job: {} - Disabling job", e.getMessage());
+                // 스케줄링 실패 시 enabled 상태를 false로 업데이트
+                updated.setEnabled(false);
+                batchJobRepository.save(updated);
             }
         }
 
@@ -280,9 +287,7 @@ public class BatchJobService {
      * 배치 실행 중 여부 확인
      */
     private boolean isJobRunning(String batchId) {
-        // BatchExecutionRepository 조회 필요
-        // 간단히 구현하기 위해 여기서는 false 반환
-        // 실제로는 BatchExecutionRepository를 주입받아 RUNNING 상태 확인
-        return false;
+        return batchExecutionRepository.findByBatchIdAndStatus(batchId, BatchStatus.RUNNING.name())
+                .isPresent();
     }
 }
