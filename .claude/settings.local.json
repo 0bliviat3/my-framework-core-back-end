@@ -14,7 +14,10 @@
       "Bash(./mvnw clean:*)",
       "Bash(mvn clean test-compile:*)",
       "Bash(./gradlew clean:*)",
-      "Bash(gradle clean testClasses:*)"
+      "Bash(gradle clean testClasses:*)",
+      "Bash(gradlew.bat clean:*)",
+      "Bash(gradlew.bat compileJava:*)",
+      "Bash(gradlew.bat compileTestJava:*)"
     ]
   }
 }

@@ -248,23 +248,32 @@ JPA의 `ddl-auto: update` 설정으로 인해 애플리케이션 시작 시 자�
 - **Proxy API 모듈**: 동적 API 호출, 실행 이력 관리, 재시도 로직, 배치/스케줄러 연동
 - **배치 관리 모듈**: Quartz 스케줄러 기반, CRON/INTERVAL 스케줄, Redis 분산 락, Proxy API 통합, 자동 재시도
 - **공통코드 관리 모듈**: 코드 그룹/항목 관리, Redis 캐싱, 다중 서버 지원, 활성화/비활성화
+- **세션 관리 모듈**: Spring Session Redis, 보안 쿠키, IP/UA 검증, 자동 갱신, 세션 감사 로그
 - **예외 처리 모듈**: 전역 예외 처리 및 히스토리 저장
-
-### 📋 예정된 모듈
-- 세션 관리 모듈 (Redis 활용)
 
 ## API 엔드포인트
 
-### 인증 관련
-- `POST /sign-up`: 회원가입
-- `POST /sign-in`: 로그인
-- `GET /sign-out`: 로그아웃
+### 인증 관련 (Session)
+- `POST /sessions/login`: 로그인 (세션 생성)
+- `POST /sessions/logout`: 로그아웃 (세션 삭제)
+- `GET /sessions/current`: 현재 세션 조회
+- `POST /sessions/refresh`: 세션 TTL 갱신
+- `GET /sessions/validate`: 세션 유효성 검증
+
+### 세션 관리 (Admin)
+- `GET /admin/sessions`: 전체 세션 목록 (페이징)
+- `GET /admin/sessions/stats`: 세션 통계
+- `GET /admin/sessions/user/{userId}`: 사용자별 세션 조회
+- `DELETE /admin/sessions/{sessionId}`: 특정 세션 강제 종료
+- `DELETE /admin/sessions/user/{userId}`: 사용자 전체 세션 종료
 
 ### 사용자 관리
+- `POST /users/sign-up`: 회원가입
 - `GET /users`: 사용자 목록 조회 (페이징)
-- `GET /user`: 사용자 조회
-- `PUT /user`: 사용자 수정
-- `DELETE /user`: 사용자 삭제
+- `GET /users/{userId}`: 사용자 조회
+- `GET /users/exists/{userId}`: 사용자 ID 존재 여부 확인
+- `PUT /users`: 사용자 수정
+- `DELETE /users`: 사용자 삭제 (회원 탈퇴)
 
 ### 프로그램 관리
 - `GET /programs`: 프로그램 목록 조회 (페이징)
@@ -362,6 +371,18 @@ JPA의 `ddl-auto: update` 설정으로 인해 애플리케이션 시작 시 자�
 - `PATCH /code-items/{id}/toggle`: 코드 항목 활성/비활성 토글
 - `POST /code-items/cache/refresh/{groupCode}`: 그룹별 캐시 갱신
 - `POST /code-items/cache/refresh`: 전체 캐시 갱신
+
+### 세션 관리
+- `POST /sessions/login`: 로그인 (세션 생성)
+- `POST /sessions/logout`: 로그아웃 (세션 삭제)
+- `GET /sessions/current`: 현재 세션 정보 조회
+- `POST /sessions/refresh`: 세션 갱신 (TTL 연장)
+- `GET /sessions/validate`: 세션 유효성 검증
+- `GET /admin/sessions`: 전체 세션 목록 조회 (관리자)
+- `GET /admin/sessions/stats`: 세션 통계 조회 (관리자)
+- `GET /admin/sessions/user/{userId}`: 사용자별 세션 목록 (관리자)
+- `DELETE /admin/sessions/{sessionId}`: 특정 세션 강제 종료 (관리자)
+- `DELETE /admin/sessions/user/{userId}`: 사용자 전체 세션 종료 (관리자)
 
 ## 프론트엔드 연동 가이드
 

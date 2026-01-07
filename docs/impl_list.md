@@ -1,6 +1,6 @@
 # Framework Core Back-end 구현 현황
 
-> 최종 업데이트: 2026-01-06
+> 최종 업데이트: 2026-01-07
 
 ## 📋 목차
 - [1. 프로젝트 개요](#1-프로젝트-개요)
@@ -33,6 +33,7 @@ Spring Boot 기반의 엔터프라이즈 프레임워크 백엔드 시스템으�
 - Spring Boot 3.5.4
 - Spring Data JPA
 - Spring Data Redis (Lettuce)
+- Spring Session Data Redis
 - Spring Security
 - Spring Batch
 - Quartz Scheduler
@@ -1391,6 +1392,302 @@ CODE:ITEMS:{groupCode}          # 그룹별 코드 항목 목록
 
 ---
 
+### 3.10 Session 모듈 (세션 관리) ⭐ NEW
+
+#### ✅ 구현 파일 (총 21개)
+
+**Domain & DTO**
+- `UserSession.java` - 세션 데이터 (Serializable)
+- `SessionAudit.java` - 세션 감사 로그 엔티티
+- `SessionDTO.java` - 세션 응답 DTO
+- `LoginRequest.java` - 로그인 요청 DTO
+- `SessionStatsDTO.java` - 세션 통계 DTO
+- `SessionAuditDTO.java` - 감사 로그 DTO
+
+**Repository & Mapper**
+- `SessionAuditRepository.java` - JPA Repository
+- `SessionAuditMapper.java` - MapStruct Mapper
+
+**Service**
+- `SessionService.java` - 핵심 세션 관리 (CRUD, 보안)
+- `SessionSecurityService.java` - IP/User-Agent 검증
+- `SessionManagementService.java` - 관리자 기능 (통계, 강제 로그아웃)
+
+**Controller**
+- `SessionController.java` - 사용자 API (5개)
+- `SessionAdminController.java` - 관리자 API (5개)
+
+**Configuration**
+- `SessionConfig.java` - Spring Session + Redis 설정
+- `SessionProperties.java` - 세션 설정 프로퍼티 (Cookie, Security, Refresh)
+
+**Filter & Interceptor**
+- `SessionValidationFilter.java` - 세션 유효성 검증 필터
+- `SessionRefreshInterceptor.java` - 세션 자동 갱신 인터셉터
+
+**Exception & Constants**
+- `SessionException.java` - 세션 예외
+- `SessionExceptionMessage.java` - 예외 메시지
+- `SessionConstants.java` - 세션 상수
+
+**Tests**
+- `SessionServiceTest.java` - 6개 테스트
+- `SessionSecurityServiceTest.java` - 5개 테스트
+
+#### 📌 주요 기능
+
+**1. Spring Session + Redis 통합**
+- ✅ Spring Session Data Redis 활용
+- ✅ 분산 환경에서 세션 공유
+- ✅ Redis TTL 기반 자동 만료 (30분)
+- ✅ Lettuce 클라이언트 사용
+- ✅ Session Fixation Attack 방지
+
+**2. 쿠키 보안 설정**
+- ✅ HttpOnly: true (XSS 방지)
+- ✅ Secure: true (HTTPS only)
+- ✅ SameSite: Strict (CSRF 방지)
+- ✅ 쿠키 이름 커스터마이징
+- ✅ 쿠키 경로/도메인 설정
+
+**3. 세션 보안 검증**
+- ✅ IP 주소 검증 (설정 가능)
+- ✅ User-Agent 검증 (설정 가능)
+- ✅ 세션 하이재킹 방지
+- ✅ 검증 실패 시 자동 세션 무효화
+
+**4. 세션 라이프사이클 관리**
+- ✅ 로그인 (세션 생성)
+- ✅ 로그아웃 (세션 삭제)
+- ✅ 세션 조회 (현재 세션 정보)
+- ✅ 세션 갱신 (TTL 연장)
+- ✅ 세션 검증 (유효성 확인)
+- ✅ 강제 로그아웃 (관리자)
+
+**5. Sliding Window TTL**
+- ✅ 요청마다 세션 활동 감지
+- ✅ 임계값 기반 자동 갱신 (50% 경과 시)
+- ✅ SessionRefreshInterceptor 활용
+- ✅ 설정으로 활성/비활성 토글
+
+**6. 세션 감사 로그**
+- ✅ 모든 세션 이벤트 기록
+- ✅ 이벤트 타입: LOGIN, LOGOUT, EXPIRED, FORCE_LOGOUT
+- ✅ IP 주소, User-Agent 기록
+- ✅ 로그인/로그아웃 시간 추적
+- ✅ 관리자 정보 기록 (강제 로그아웃 시)
+
+**7. 관리자 기능**
+- ✅ 전체 세션 목록 조회 (페이징)
+- ✅ 사용자별 세션 조회
+- ✅ 세션 통계 조회
+  - 총 세션 수
+  - 활성 세션 수
+  - 만료 임박 세션 수 (5분 이내)
+- ✅ 특정 세션 강제 종료
+- ✅ 사용자 전체 세션 종료
+
+**8. 세션 필터**
+- ✅ SessionValidationFilter
+- ✅ 로그인/로그아웃 경로 제외
+- ✅ 세션 보안 검증 자동 실행
+- ✅ 검증 실패 시 401 Unauthorized
+
+**9. 설정 기반 동작**
+```yaml
+session:
+  cookie:
+    name: SESSION_ID
+    path: /
+    http-only: true
+    secure: true
+    max-age: 1800
+  security:
+    validate-ip: true
+    validate-user-agent: false
+  refresh:
+    enabled: true
+    threshold: 0.5
+```
+
+#### 📊 데이터베이스 스키마
+
+**세션 감사 로그 테이블**
+```sql
+CREATE TABLE t_session_audit (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  session_id VARCHAR(255) NOT NULL,
+  user_id VARCHAR(100),
+  event_type VARCHAR(20) NOT NULL,
+  event_time DATETIME NOT NULL,
+  ip_address VARCHAR(50),
+  user_agent VARCHAR(500),
+  admin_id VARCHAR(100),
+  INDEX idx_session_id (session_id),
+  INDEX idx_user_id (user_id),
+  INDEX idx_event_type (event_type),
+  INDEX idx_event_time (event_time)
+);
+```
+
+**Redis 세션 구조**
+```
+# Spring Session 자동 관리
+spring:session:sessions:{sessionId}          # 세션 데이터
+spring:session:sessions:expires:{sessionId}  # 만료 정보
+spring:session:expirations:{timestamp}       # 만료 인덱스
+```
+
+#### 🔌 REST API 엔드포인트 (총 10개)
+
+**사용자 API (5개)**
+- `POST /sessions/login` - 로그인 (세션 생성)
+- `POST /sessions/logout` - 로그아웃 (세션 삭제)
+- `GET /sessions/current` - 현재 세션 조회
+- `POST /sessions/refresh` - 세션 TTL 갱신
+- `GET /sessions/validate` - 세션 유효성 검증
+
+**관리자 API (5개)**
+- `GET /admin/sessions` - 전체 세션 목록 (페이징)
+- `GET /admin/sessions/stats` - 세션 통계
+- `GET /admin/sessions/user/{userId}` - 사용자별 세션 조회
+- `DELETE /admin/sessions/{sessionId}` - 특정 세션 강제 종료
+- `DELETE /admin/sessions/user/{userId}` - 사용자 전체 세션 종료
+
+#### 🔄 세션 플로우
+
+**1. 로그인 플로우**
+```
+Client Request
+   ↓
+SessionController.login()
+   ↓
+SignService.signIn() (사용자 인증)
+   ↓
+SessionService.createSession()
+   ↓
+1. 기존 세션 무효화 (Session Fixation 방지)
+2. 새 세션 생성
+3. 사용자 정보 저장
+4. IP/User-Agent 저장
+5. Redis에 저장 (Spring Session)
+6. SessionAudit 로그 기록 (LOGIN)
+   ↓
+Response with Set-Cookie
+```
+
+**2. 요청 검증 플로우**
+```
+Client Request with Cookie
+   ↓
+SessionValidationFilter
+   ↓
+1. 세션 존재 확인
+2. SessionSecurityService.validateSessionSecurity()
+   - IP 검증 (설정된 경우)
+   - User-Agent 검증 (설정된 경우)
+   ↓
+SessionRefreshInterceptor
+   ↓
+임계값 확인 (50% 경과 시)
+   ↓
+SessionService.refreshSession()
+   ↓
+Controller 처리
+```
+
+**3. 로그아웃 플로우**
+```
+Client Request
+   ↓
+SessionController.logout()
+   ↓
+SessionService.deleteSession()
+   ↓
+1. 세션 무효화
+2. Redis에서 삭제 (자동)
+3. SessionAudit 로그 기록 (LOGOUT)
+4. 쿠키 삭제 (MaxAge=0)
+   ↓
+Response
+```
+
+#### 🛡️ 보안 기능
+
+**1. Session Fixation Attack 방지**
+```java
+// 로그인 시 기존 세션 무효화 후 새 세션 생성
+HttpSession oldSession = request.getSession(false);
+if (oldSession != null) {
+    oldSession.invalidate();
+}
+HttpSession newSession = request.getSession(true);
+```
+
+**2. IP/User-Agent 검증**
+```java
+// 세션 생성 시 기록
+session.setAttribute(ATTR_IP_ADDRESS, request.getRemoteAddr());
+session.setAttribute(ATTR_USER_AGENT, request.getHeader("User-Agent"));
+
+// 요청마다 검증
+if (validateIp) {
+    String sessionIp = session.getAttribute(ATTR_IP_ADDRESS);
+    String requestIp = request.getRemoteAddr();
+    if (!sessionIp.equals(requestIp)) {
+        throw new SessionException(IP_MISMATCH);
+    }
+}
+```
+
+**3. 쿠키 보안**
+```java
+@Bean
+public CookieSerializer cookieSerializer() {
+    DefaultCookieSerializer serializer = new DefaultCookieSerializer();
+    serializer.setUseHttpOnlyCookie(true);   // JavaScript 접근 차단
+    serializer.setUseSecureCookie(true);      // HTTPS only
+    serializer.setSameSite("Strict");         // CSRF 방지
+    return serializer;
+}
+```
+
+#### 📈 테스트 커버리지
+
+**SessionServiceTest (6개)**
+- ✅ 세션 생성 성공
+- ✅ 현재 세션 조회 - 세션 없음
+- ✅ 세션 삭제 성공
+- ✅ 세션 유효성 검증 - 유효함
+- ✅ 세션 유효성 검증 - 세션 없음
+
+**SessionSecurityServiceTest (5개)**
+- ✅ IP 검증 - 일치
+- ✅ IP 검증 - 불일치
+- ✅ User-Agent 검증 - 일치
+- ✅ User-Agent 검증 - 불일치
+- ✅ 검증 비활성화 - 예외 없음
+
+#### 🔗 통합 포인트
+
+**1. User 모듈 연동**
+- SignService.signIn()을 통한 사용자 인증
+- UserDTO를 세션에 저장
+
+**2. Redis 모듈 연동**
+- Spring Session Data Redis 사용
+- 기존 Redis 설정 재사용 (RedisConnectionFactory)
+
+**3. Filter Chain 통합**
+- SessionValidationFilter 등록
+- 로그인/로그아웃 경로 제외 설정
+
+**4. Interceptor 통합**
+- SessionRefreshInterceptor 등록
+- 자동 TTL 갱신
+
+---
+
 ## 4. 아키텍처
 
 ### 4.1 패키지 구조
@@ -1891,8 +2188,8 @@ ApiEndpoint 1:N ApiExecutionHistory
 | 2 | Redis 관리 | 분산 락 및 캐시 관리 | ✅ 완료 |
 | 3 | Proxy API | 동적 API 호출 및 실행 관리 | ✅ 완료 |
 | 4 | 배치 관리 | Quartz + Redis Lock + Proxy API | ✅ 완료 |
-| 5 | 공통코드 관리 | 코드 관리 (Redis 활용) | 📋 예정 |
-| 6 | 세션 관리 | Redis 기반 세션 | 📋 예정 |
+| 5 | 공통코드 관리 | 코드 관리 (Redis 활용) | ✅ 완료 |
+| 6 | 세션 관리 | Spring Session + Redis | ✅ 완료 |
 
 ### 8.2 개선 예정
 
@@ -1937,27 +2234,28 @@ ApiEndpoint 1:N ApiExecutionHistory
 
 | 구분 | 파일 수 |
 |------|---------|
-| Entity | 21개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2, Code 2) |
-| DTO | 28개 (User 2, Program 1, Menu 2, ErrorHistory 1, ApiKey 3, Board 6, Redis 3, Proxy 4, Batch 3, Code 2) |
-| Repository | 21개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2, Code 2) |
-| Service | 27개 (User 3, Program 1, Menu 1, ErrorHistory 1, ApiKey 2, Board 5, Redis 2, Proxy 3, Batch 4, Code 2) |
-| Controller | 20개 (User 1, Program 1, Menu 1, ApiKey 2, Board 5, Redis 2, Proxy 3, Batch 2, Code 2) |
-| Mapper | 20개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2, Code 2) |
-| Exception | 21개 (Base 1, User 2, Program 2, Menu 2, ApiKey 2, Board 2, Redis 2, Proxy 2, Batch 2, Code 2) |
-| Constant | 17개 (Base 2, Board 4, ApiKey 1, Redis 2, Proxy 1, Batch 4, Code 1) |
-| Config | 10개 (Base 2, ApiKey 1, Board 1, Redis 1, Proxy 1, Batch 2) |
+| Entity | 22개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2, Code 2, Session 2) |
+| DTO | 34개 (User 2, Program 1, Menu 2, ErrorHistory 1, ApiKey 3, Board 6, Redis 3, Proxy 4, Batch 3, Code 2, Session 6) |
+| Repository | 22개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2, Code 2, Session 1) |
+| Service | 30개 (User 3, Program 1, Menu 1, ErrorHistory 1, ApiKey 2, Board 5, Redis 2, Proxy 3, Batch 4, Code 2, Session 3) |
+| Controller | 22개 (User 1, Program 1, Menu 1, ApiKey 2, Board 5, Redis 2, Proxy 3, Batch 2, Code 2, Session 2) |
+| Mapper | 21개 (User 1, Program 1, Menu 1, ErrorHistory 1, ApiKey 3, Board 6, Proxy 2, Batch 2, Code 2, Session 1) |
+| Exception | 23개 (Base 1, User 2, Program 2, Menu 2, ApiKey 2, Board 2, Redis 2, Proxy 2, Batch 2, Code 2, Session 2) |
+| Constant | 18개 (Base 2, Board 4, ApiKey 1, Redis 2, Proxy 1, Batch 4, Code 1, Session 1) |
+| Config | 12개 (Base 2, ApiKey 1, Board 1, Redis 1, Proxy 1, Batch 2, Session 2) |
 | Job | 1개 (Batch 1 - QuartzBatchJob) |
 | Util | 3개 (ApiKey 1, Board 1, Batch 1 - Initializer) |
-| Interceptor | 2개 (Base 1, ApiKey 1) |
-| Test | 15개 (User 1, ApiKey 2, Board 4, Redis 2, Proxy 1, Batch 3, Code 2) |
-| **총계** | **206개** |
+| Interceptor | 3개 (Base 1, ApiKey 1, Session 1) |
+| Filter | 1개 (Session 1 - SessionValidationFilter) |
+| Test | 17개 (User 1, ApiKey 2, Board 4, Redis 2, Proxy 1, Batch 3, Code 2, Session 2) |
+| **총계** | **229개** |
 
 ### 9.2 코드 라인 수 (추정)
 
-- Java 소스 코드: ~17,500 lines
-- 테스트 코드: ~5,500 lines
-- 설정 파일: ~400 lines
-- **총계: ~23,400 lines**
+- Java 소스 코드: ~19,000 lines
+- 테스트 코드: ~6,000 lines
+- 설정 파일: ~450 lines
+- **총계: ~25,450 lines**
 
 ---
 
@@ -1981,8 +2279,10 @@ ApiEndpoint 1:N ApiExecutionHistory
 | 2026-01-06 | 0.0.1 | Redis 관리 모듈 완성 (분산 락, 캐시 관리, Spring Boot 표준 설정) |
 | 2026-01-06 | 0.0.1 | Proxy API 모듈 완성 (동적 API 호출, 실행 이력, 재시도 로직, RestTemplate) |
 | 2026-01-06 | 0.0.1 | 배치 관리 모듈 완성 (Quartz 스케줄러, Redis 분산 락, Proxy API 통합, 자동 재시도, CRON/INTERVAL) |
+| 2026-01-06 | 0.0.1 | 공통코드 관리 모듈 완성 (코드 그룹/항목 관리, Redis 캐싱, Cache-Aside 패턴) |
+| 2026-01-07 | 0.0.1 | 세션 관리 모듈 완성 (Spring Session + Redis, 보안 검증, 감사 로그, Sliding Window TTL) |
 
 ---
 
 **문서 작성자**: Claude Code
-**마지막 업데이트**: 2026-01-06
+**마지막 업데이트**: 2026-01-07
