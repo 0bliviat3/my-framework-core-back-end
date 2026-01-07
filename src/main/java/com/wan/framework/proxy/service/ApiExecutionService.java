@@ -245,7 +245,8 @@ public class ApiExecutionService {
 
                 headerMap.forEach(headers::add);
             } catch (Exception e) {
-                log.error("Failed to parse header template: {}", e.getMessage());
+                log.error("Failed to parse header template: {} - Template: {}", e.getMessage(), headerTemplate);
+                throw new ProxyException(ProxyExceptionMessage.TEMPLATE_PARSING_FAILED, e);
             }
         }
 
