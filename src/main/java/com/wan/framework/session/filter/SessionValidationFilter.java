@@ -30,10 +30,12 @@ public class SessionValidationFilter implements Filter {
     private static final List<String> EXCLUDED_PATHS = Arrays.asList(
             "/sessions/login",
             "/sessions/logout",
-            "/sign-in",
-            "/sign-up",
+            "/users/sign-in",
+            "/users/sign-up",
             "/error",
-            "/actuator"
+            "/actuator",
+            "/swagger-ui",
+            "/v3/api-docs"
     );
 
     @Override

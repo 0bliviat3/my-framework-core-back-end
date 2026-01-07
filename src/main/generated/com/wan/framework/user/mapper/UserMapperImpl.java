@@ -1,13 +1,16 @@
 package com.wan.framework.user.mapper;
 
+import com.wan.framework.user.constant.RoleType;
 import com.wan.framework.user.domain.User;
 import com.wan.framework.user.dto.UserDTO;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import javax.annotation.processing.Generated;
 import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-01-07T09:53:32+0900",
+    date = "2026-01-07T13:23:51+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.15 (OpenLogic)"
 )
 @Component
@@ -26,7 +29,10 @@ public class UserMapperImpl implements UserMapper {
         userDTO.name( user.getName() );
         userDTO.dataCode( user.getDataCode() );
         userDTO.passwordSalt( user.getPasswordSalt() );
-        userDTO.roles( user.getRoles() );
+        Set<RoleType> set = user.getRoles();
+        if ( set != null ) {
+            userDTO.roles( new LinkedHashSet<RoleType>( set ) );
+        }
 
         return userDTO.build();
     }
@@ -44,7 +50,10 @@ public class UserMapperImpl implements UserMapper {
         user.name( dto.getName() );
         user.dataCode( dto.getDataCode() );
         user.passwordSalt( dto.getPasswordSalt() );
-        user.roles( dto.getRoles() );
+        Set<RoleType> set = dto.getRoles();
+        if ( set != null ) {
+            user.roles( new LinkedHashSet<RoleType>( set ) );
+        }
 
         return user.build();
     }

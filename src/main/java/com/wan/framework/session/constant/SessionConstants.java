@@ -32,6 +32,7 @@ public final class SessionConstants {
     public static final String EVENT_LOGOUT = "LOGOUT";
     public static final String EVENT_EXPIRED = "EXPIRED";
     public static final String EVENT_FORCE_LOGOUT = "FORCE_LOGOUT";
+    public static final String EVENT_CONCURRENT_LOGOUT = "CONCURRENT_LOGOUT";
 
     // Default Values
     public static final int DEFAULT_MAX_INACTIVE_INTERVAL = 1800; // 30분

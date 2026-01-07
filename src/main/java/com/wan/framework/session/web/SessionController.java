@@ -46,13 +46,13 @@ public class SessionController {
                 .build();
         UserDTO user = signService.signIn(loginUser);
 
-        // 세션 생성
+        // 세션 생성 (실제 사용자 역할 사용)
         SessionDTO session = sessionService.createSession(
                 httpRequest,
                 httpResponse,
                 user.getUserId(),
-                user.getUserId(),  // username으로 userId 사용
-                Arrays.asList("ROLE_USER")  // 기본 역할
+                user.getName(),
+                user.getRoleNames()  // 사용자의 실제 역할 사용
         );
 
         return ResponseEntity.ok(session);

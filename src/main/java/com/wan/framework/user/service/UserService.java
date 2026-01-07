@@ -51,9 +51,10 @@ public class UserService {
         String passwordSalt = Optional.ofNullable(userDTO.getPasswordSalt())
                 .orElse(user.getPasswordSalt());
 
-        user.setPassword(password);
-        user.setPasswordSalt(passwordSalt);
-        user.setName(name);
+        // 불변성 유지를 위해 비즈니스 메서드 사용
+        user.updatePassword(password, passwordSalt);
+        user.updateName(name);
+
         return userMapper.toDto(user);
     }
 
@@ -61,8 +62,10 @@ public class UserService {
     public UserDTO deleteUser(UserDTO userDTO) {
         User user = userRepository.findByUserIdAndDataCodeNot(userDTO.getUserId(), D)
                 .orElseThrow(EntityNotFoundException::new);
-        user.setModifiedTime(LocalDateTime.now());
-        user.setDataCode(D);
+
+        // 불변성 유지를 위해 비즈니스 메서드 사용
+        user.updateDataCode(D);
+
         return userMapper.toDto(user);
     }
 

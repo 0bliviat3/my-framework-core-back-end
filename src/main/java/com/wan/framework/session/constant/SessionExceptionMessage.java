@@ -24,6 +24,9 @@ public enum SessionExceptionMessage {
     INVALID_CREDENTIALS("[ERROR] 잘못된 인증 정보입니다"),
     USER_NOT_FOUND("[ERROR] 사용자를 찾을 수 없습니다"),
 
+    // 동시 로그인 관련
+    CONCURRENT_SESSION_LIMIT_EXCEEDED("[ERROR] 동시 로그인 세션 수를 초과했습니다"),
+
     // Redis 관련
     REDIS_CONNECTION_FAILED("[ERROR] Redis 연결에 실패했습니다"),
     REDIS_OPERATION_FAILED("[ERROR] Redis 작업에 실패했습니다");

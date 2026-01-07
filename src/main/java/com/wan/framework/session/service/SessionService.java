@@ -21,8 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static com.wan.framework.session.constant.SessionConstants.*;
@@ -55,6 +54,11 @@ public class SessionService {
         log.info("Creating session for user: {}", userId);
 
         try {
+            // 동시 로그인 제한 확인
+            if (sessionProperties.getConcurrent().isEnabled()) {
+                checkConcurrentSessions(userId);
+            }
+
             // 기존 세션 무효화 (세션 고정 방지)
             HttpSession oldSession = request.getSession(false);
             if (oldSession != null) {
@@ -184,10 +188,44 @@ public class SessionService {
             throw new SessionException(SESSION_NOT_FOUND);
         }
 
+        // 갱신 설정 확인
+        if (!sessionProperties.getRefresh().isEnabled()) {
+            log.debug("Session refresh is disabled");
+            return;
+        }
+
+        String sessionId = session.getId();
+        int maxInactiveInterval = session.getMaxInactiveInterval();
+        long lastAccessedTime = session.getLastAccessedTime();
+        long currentTime = System.currentTimeMillis();
+
+        // 남은 시간 계산
+        long elapsedTime = currentTime - lastAccessedTime;
+        long remainingTime = (maxInactiveInterval * 1000L) - elapsedTime;
+        double remainingRatio = (double) remainingTime / (maxInactiveInterval * 1000L);
+
+        // 임계값 확인
+        double threshold = sessionProperties.getRefresh().getThreshold();
+        if (remainingRatio > threshold) {
+            log.debug("Session does not need refresh yet: sessionId={}, remaining={}%",
+                    sessionId, String.format("%.1f", remainingRatio * 100));
+            return;
+        }
+
         // 마지막 접근 시간 업데이트
         session.setAttribute(ATTR_LAST_ACCESS_TIME, LocalDateTime.now());
 
-        log.debug("Session refreshed: sessionId={}", session.getId());
+        // Redis TTL 갱신 (Spring Session이 자동으로 처리하지만 명시적으로 갱신)
+        try {
+            String redisKey = REDIS_SESSION_PREFIX + sessionId;
+            redisTemplate.expire(redisKey, maxInactiveInterval, TimeUnit.SECONDS);
+            log.debug("Session TTL refreshed: sessionId={}, ttl={}s", sessionId, maxInactiveInterval);
+        } catch (Exception e) {
+            log.warn("Failed to refresh session TTL in Redis: sessionId={}", sessionId, e);
+            // TTL 갱신 실패해도 세션은 유지
+        }
+
+        log.info("Session refreshed: sessionId={}", sessionId);
     }
 
     /**
@@ -282,6 +320,112 @@ public class SessionService {
             ip = request.getRemoteAddr();
         }
         return ip;
+    }
+
+    /**
+     * 동시 로그인 제한 확인
+     */
+    private void checkConcurrentSessions(String userId) {
+        // Redis에서 해당 사용자의 모든 세션 조회
+        String pattern = REDIS_SESSION_PREFIX + "*";
+        Set<String> sessionKeys = redisTemplate.keys(pattern);
+
+        if (sessionKeys == null || sessionKeys.isEmpty()) {
+            return;
+        }
+
+        // 동일 사용자의 세션 필터링
+        List<String> userSessions = new ArrayList<>();
+        for (String key : sessionKeys) {
+            try {
+                Object sessionObj = redisTemplate.opsForValue().get(key);
+                if (sessionObj != null) {
+                    // Spring Session의 MapSession 구조에서 userId 추출
+                    String sessionUserId = extractUserIdFromSession(sessionObj);
+                    if (userId.equals(sessionUserId)) {
+                        userSessions.add(key);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to check session: {}", key, e);
+            }
+        }
+
+        int maxSessions = sessionProperties.getConcurrent().getMaxSessions();
+        boolean preventLogin = sessionProperties.getConcurrent().isPreventLogin();
+
+        log.debug("User {} has {} active sessions (max: {})", userId, userSessions.size(), maxSessions);
+
+        if (userSessions.size() >= maxSessions) {
+            if (preventLogin) {
+                // 새 로그인 차단
+                log.warn("Concurrent session limit exceeded for user: {}", userId);
+                throw new SessionException(SessionExceptionMessage.CONCURRENT_SESSION_LIMIT_EXCEEDED);
+            } else {
+                // 가장 오래된 세션 종료
+                terminateOldestSession(userSessions);
+            }
+        }
+    }
+
+    /**
+     * Session 객체에서 userId 추출
+     */
+    private String extractUserIdFromSession(Object sessionObj) {
+        try {
+            if (sessionObj instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> sessionMap = (Map<String, Object>) sessionObj;
+                Object attrs = sessionMap.get("sessionAttr:" + ATTR_USER_ID);
+                return attrs != null ? attrs.toString() : null;
+            }
+        } catch (Exception e) {
+            log.debug("Failed to extract userId from session", e);
+        }
+        return null;
+    }
+
+    /**
+     * 가장 오래된 세션 종료
+     */
+    private void terminateOldestSession(List<String> sessionKeys) {
+        if (sessionKeys.isEmpty()) {
+            return;
+        }
+
+        // 첫 번째 세션을 가장 오래된 것으로 간주
+        String oldestKey = sessionKeys.get(0);
+        long oldestTime = Long.MAX_VALUE;
+
+        for (String key : sessionKeys) {
+            try {
+                Object sessionObj = redisTemplate.opsForValue().get(key);
+                if (sessionObj instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> sessionMap = (Map<String, Object>) sessionObj;
+                    Object creationTime = sessionMap.get("creationTime");
+                    if (creationTime instanceof Long) {
+                        long time = (Long) creationTime;
+                        if (time < oldestTime) {
+                            oldestTime = time;
+                            oldestKey = key;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to check session creation time: {}", key, e);
+            }
+        }
+
+        // 가장 오래된 세션 삭제
+        redisTemplate.delete(oldestKey);
+        String sessionId = oldestKey.replace(REDIS_SESSION_PREFIX, "");
+
+        log.info("Terminated oldest session due to concurrent login limit: {}", sessionId);
+
+        // 감사 로그 기록
+        saveAuditLog(sessionId, "UNKNOWN", EVENT_CONCURRENT_LOGOUT, null, null,
+                "Terminated due to concurrent session limit");
     }
 
     /**

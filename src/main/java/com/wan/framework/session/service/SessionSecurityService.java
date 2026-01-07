@@ -73,19 +73,38 @@ public class SessionSecurityService {
     }
 
     /**
-     * 클라이언트 IP 추출
+     * 클라이언트 IP 추출 (프록시 환경 고려)
      */
     private String getClientIP(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
+        String remoteAddr = request.getRemoteAddr();
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+
+        // 신뢰할 수 있는 프록시에서 온 요청인지 확인
+        if (forwardedFor != null && !forwardedFor.isEmpty() && isTrustedProxy(remoteAddr)) {
+            // X-Forwarded-For 헤더의 첫 번째 IP 사용 (실제 클라이언트 IP)
+            String[] ips = forwardedFor.split(",");
+            return ips[0].trim();
         }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("WL-Proxy-Client-IP");
+
+        // 프록시가 아니거나 신뢰할 수 없는 경우 직접 연결 IP 사용
+        return remoteAddr;
+    }
+
+    /**
+     * 신뢰할 수 있는 프록시 IP인지 확인
+     */
+    private boolean isTrustedProxy(String ip) {
+        if (ip == null || ip.isEmpty()) {
+            return false;
         }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
+
+        // 설정된 신뢰할 수 있는 프록시 목록 확인
+        java.util.List<String> trustedProxies = sessionProperties.getSecurity().getTrustedProxies();
+        if (trustedProxies == null || trustedProxies.isEmpty()) {
+            // 설정이 없으면 로컬 IP만 신뢰
+            return ip.equals("127.0.0.1") || ip.equals("0:0:0:0:0:0:0:1") || ip.equals("::1");
         }
-        return ip;
+
+        return trustedProxies.contains(ip);
     }
 }

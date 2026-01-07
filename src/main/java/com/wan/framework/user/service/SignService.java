@@ -94,11 +94,19 @@ public class SignService {
     /**
      * 수정: 보안 정책에 따라 비밀번호 재입력(로그인 검증)을 요구. 이후 새 솔트 생성 및 저장.
      */
-    @Transactional
     public UserDTO modifyUser(UserDTO userDTO) {
-        // 보안: 수정 전 본인 확인
+        // 보안: 수정 전 본인 확인 (트랜잭션 밖에서 검증)
         validateSignIn(userDTO);
 
+        // 실제 수정 로직은 별도 트랜잭션으로 처리
+        return modifyUserInternal(userDTO);
+    }
+
+    /**
+     * 사용자 정보 수정 내부 로직 (트랜잭션 처리)
+     */
+    @Transactional
+    private UserDTO modifyUserInternal(UserDTO userDTO) {
         String newSalt = passwordService.generateSaltBase64();
         String newHash = passwordService.hashPassword(userDTO.getPassword(), newSalt);
 
@@ -111,9 +119,19 @@ public class SignService {
     /**
      * 삭제: 본인 확인 후 삭제 처리
      */
-    @Transactional
     public UserDTO deleteUser(UserDTO userDTO) {
+        // 본인 확인 (트랜잭션 밖에서 검증)
         validateSignIn(userDTO);
+
+        // 실제 삭제 로직은 별도 트랜잭션으로 처리
+        return deleteUserInternal(userDTO);
+    }
+
+    /**
+     * 사용자 삭제 내부 로직 (트랜잭션 처리)
+     */
+    @Transactional
+    private UserDTO deleteUserInternal(UserDTO userDTO) {
         return userService.deleteUser(userDTO).removePass();
     }
 

@@ -42,9 +42,8 @@ public class UserController {
     public ResponseEntity<UserDTO> modifyUser(@RequestBody UserDTO userDTO) {
         log.info("PUT /users - userId: {}", userDTO.getUserId());
         UserDTO user = signService.modifyUser(userDTO);
-        user.setPasswordSalt(null);
-        user.setPassword(null);
-        return ResponseEntity.ok(user);
+        // removePass() 메서드로 비밀번호 정보 제거
+        return ResponseEntity.ok(user.removePass());
     }
 
     /**
