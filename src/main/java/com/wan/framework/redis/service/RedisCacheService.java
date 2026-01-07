@@ -1,5 +1,7 @@
 package com.wan.framework.redis.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wan.framework.redis.exception.RedisException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,7 @@ import static com.wan.framework.redis.constant.RedisExceptionMessage.*;
 public class RedisCacheService {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     // ==================== String Operations ====================
 
@@ -89,7 +92,44 @@ public class RedisCacheService {
     @SuppressWarnings("unchecked")
     public <T> T get(String key, Class<T> clazz) {
         Object value = get(key);
-        return value != null ? (T) value : null;
+        if (value == null) {
+            return null;
+        }
+
+        try {
+            // 이미 원하는 타입이면 캐스팅
+            if (clazz.isInstance(value)) {
+                return (T) value;
+            }
+
+            // ObjectMapper로 타입 변환
+            return objectMapper.convertValue(value, clazz);
+        } catch (Exception e) {
+            log.error("Failed to convert cache value to type: key={}, type={}", key, clazz.getName(), e);
+            throw new RedisException(CACHE_GET_FAILED, e);
+        }
+    }
+
+    /**
+     * 캐시 조회 (TypeReference 지원 - 제네릭 타입 안전)
+     *
+     * @param key         키
+     * @param typeRef     타입 참조
+     * @param <T>         타입
+     * @return 값 (없으면 null)
+     */
+    public <T> T get(String key, TypeReference<T> typeRef) {
+        Object value = get(key);
+        if (value == null) {
+            return null;
+        }
+
+        try {
+            return objectMapper.convertValue(value, typeRef);
+        } catch (Exception e) {
+            log.error("Failed to convert cache value with TypeReference: key={}", key, e);
+            throw new RedisException(CACHE_GET_FAILED, e);
+        }
     }
 
     /**

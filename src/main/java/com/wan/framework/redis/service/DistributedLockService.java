@@ -1,5 +1,6 @@
 package com.wan.framework.redis.service;
 
+import com.wan.framework.redis.dto.LockInfo;
 import com.wan.framework.redis.exception.RedisException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,8 +11,8 @@ import org.springframework.stereotype.Service;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Duration;
-import java.util.Collections;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import static com.wan.framework.redis.constant.RedisExceptionMessage.*;
@@ -31,6 +32,10 @@ public class DistributedLockService {
 
     private static final String LOCK_PREFIX = "LOCK:";
     private static final String SERVER_ID = getServerId();
+
+    // 재진입 락을 위한 ThreadLocal 저장소
+    private final ThreadLocal<Map<String, LockInfo>> threadLocks =
+            ThreadLocal.withInitial(ConcurrentHashMap::new);
 
     /**
      * 분산 락 획득
@@ -188,6 +193,107 @@ public class DistributedLockService {
      */
     private String generateLockValue() {
         return UUID.randomUUID().toString() + ":" + SERVER_ID;
+    }
+
+    /**
+     * 재진입 락 획득
+     *
+     * @param key        락 키
+     * @param ttlSeconds TTL (초)
+     * @return 락 소유자 식별 값 (UUID)
+     */
+    public String acquireReentrantLock(String key, long ttlSeconds) {
+        String threadKey = Thread.currentThread().getId() + ":" + key;
+        Map<String, LockInfo> locks = threadLocks.get();
+        LockInfo lockInfo = locks.get(threadKey);
+
+        if (lockInfo != null) {
+            // 재진입: 카운트만 증가
+            lockInfo.incrementCount();
+            log.debug("Reentrant lock acquired (count={}): key={}, value={}",
+                    lockInfo.getCount(), key, lockInfo.getLockValue());
+            return lockInfo.getLockValue();
+        }
+
+        // 최초 획득: Redis에서 락 획득
+        String lockValue = acquireLock(key, ttlSeconds);
+        locks.put(threadKey, new LockInfo(lockValue, 1));
+        log.debug("Reentrant lock acquired (initial): key={}, value={}", key, lockValue);
+        return lockValue;
+    }
+
+    /**
+     * 재진입 락 획득 시도 (타임아웃 포함)
+     *
+     * @param key            락 키
+     * @param ttlSeconds     TTL (초)
+     * @param waitTimeMillis 대기 시간 (밀리초)
+     * @param retryInterval  재시도 간격 (밀리초)
+     * @return 락 소유자 식별 값 (UUID)
+     */
+    public String acquireReentrantLockWithTimeout(String key, long ttlSeconds,
+                                                   long waitTimeMillis, long retryInterval) {
+        String threadKey = Thread.currentThread().getId() + ":" + key;
+        Map<String, LockInfo> locks = threadLocks.get();
+        LockInfo lockInfo = locks.get(threadKey);
+
+        if (lockInfo != null) {
+            // 재진입: 카운트만 증가
+            lockInfo.incrementCount();
+            log.debug("Reentrant lock acquired with timeout (count={}): key={}, value={}",
+                    lockInfo.getCount(), key, lockInfo.getLockValue());
+            return lockInfo.getLockValue();
+        }
+
+        // 최초 획득: 타임아웃 포함하여 락 획득
+        String lockValue = acquireLockWithTimeout(key, ttlSeconds, waitTimeMillis, retryInterval);
+        locks.put(threadKey, new LockInfo(lockValue, 1));
+        log.debug("Reentrant lock acquired with timeout (initial): key={}, value={}", key, lockValue);
+        return lockValue;
+    }
+
+    /**
+     * 재진입 락 해제
+     *
+     * @param key       락 키
+     * @param lockValue 락 소유자 식별 값
+     */
+    public void releaseReentrantLock(String key, String lockValue) {
+        String threadKey = Thread.currentThread().getId() + ":" + key;
+        Map<String, LockInfo> locks = threadLocks.get();
+        LockInfo lockInfo = locks.get(threadKey);
+
+        if (lockInfo == null) {
+            log.warn("No reentrant lock found to release: key={}", key);
+            throw new RedisException(LOCK_NOT_OWNED);
+        }
+
+        if (!lockInfo.getLockValue().equals(lockValue)) {
+            log.warn("Lock value mismatch: key={}, expected={}, actual={}",
+                    key, lockInfo.getLockValue(), lockValue);
+            throw new RedisException(LOCK_NOT_OWNED);
+        }
+
+        lockInfo.decrementCount();
+        if (lockInfo.getCount() > 0) {
+            // 아직 재진입 중
+            log.debug("Reentrant lock released (count={}): key={}", lockInfo.getCount(), key);
+            return;
+        }
+
+        // 모든 재진입이 해제됨: Redis에서 락 해제
+        locks.remove(threadKey);
+        releaseLock(key, lockValue);
+        log.debug("Reentrant lock fully released: key={}", key);
+    }
+
+    /**
+     * ThreadLocal 정리 (메모리 누수 방지)
+     * 작업 완료 후 반드시 호출해야 함
+     */
+    public void cleanupThreadLocals() {
+        threadLocks.remove();
+        log.debug("ThreadLocal locks cleaned up for thread: {}", Thread.currentThread().getId());
     }
 
     /**

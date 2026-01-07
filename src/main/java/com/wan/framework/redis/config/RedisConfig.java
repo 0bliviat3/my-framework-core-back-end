@@ -7,15 +7,18 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Redis 설정
  * - Spring Boot 자동 설정 활용
  * - RedisConnectionFactory, StringRedisTemplate은 자동 생성
  * - JSON 직렬화를 위한 RedisTemplate만 추가 정의
+ * - Lock Watch Dog를 위한 스케줄링 활성화
  */
 @Slf4j
 @Configuration
+@EnableScheduling
 public class RedisConfig {
 
     /**
