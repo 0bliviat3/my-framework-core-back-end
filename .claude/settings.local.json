@@ -21,7 +21,9 @@
       "Bash(gradlew.bat test:*)",
       "Bash(Select-Object -First 100)",
       "Bash(findstr:*)",
-      "Bash(./gradlew test:*)"
+      "Bash(./gradlew test:*)",
+      "Bash(./gradlew.bat clean test:*)",
+      "Bash(./gradlew.bat clean build:*)"
     ]
   }
 }

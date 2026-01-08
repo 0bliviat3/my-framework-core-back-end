@@ -26,6 +26,7 @@ public class BoardCommentService {
     private final BoardCommentRepository repository;
     private final BoardCommentMapper mapper;
     private final BoardDataRepository boardDataRepository;
+    private final BoardPermissionService permissionService;
 
     @Transactional
     public BoardCommentDTO createComment(BoardCommentDTO dto, String authorId) {
@@ -75,7 +76,8 @@ public class BoardCommentService {
         BoardComment entity = repository.findByIdAndDataStateCodeNot(id, D)
                 .orElseThrow(() -> new BoardException(NOT_FOUND_COMMENT));
 
-        if (!entity.getAuthorId().equals(userId)) {
+        // 작성자 본인이거나 관리자(ADMIN/MANAGER)인지 확인
+        if (!permissionService.canModify(entity.getAuthorId(), userId)) {
             throw new BoardException(CANNOT_MODIFY_OTHER_COMMENT);
         }
 
@@ -88,7 +90,8 @@ public class BoardCommentService {
         BoardComment entity = repository.findByIdAndDataStateCodeNot(id, D)
                 .orElseThrow(() -> new BoardException(NOT_FOUND_COMMENT));
 
-        if (!entity.getAuthorId().equals(userId)) {
+        // 작성자 본인이거나 관리자(ADMIN/MANAGER)인지 확인
+        if (!permissionService.canDelete(entity.getAuthorId(), userId)) {
             throw new BoardException(CANNOT_DELETE_OTHER_COMMENT);
         }
 

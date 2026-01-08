@@ -31,6 +31,7 @@ public class BoardDataService {
     private final BoardDataRepository repository;
     private final BoardDataMapper mapper;
     private final BoardMetaRepository boardMetaRepository;
+    private final BoardPermissionService permissionService;
 
     @Transactional
     public BoardDataDTO createPost(BoardDataDTO dto, String authorId) {
@@ -94,7 +95,8 @@ public class BoardDataService {
         BoardData entity = repository.findByIdAndDataStateCodeNot(id, D)
                 .orElseThrow(() -> new BoardException(NOT_FOUND_BOARD_DATA));
 
-        if (!entity.getAuthorId().equals(userId)) {
+        // 작성자 본인이거나 관리자(ADMIN/MANAGER)인지 확인
+        if (!permissionService.canModify(entity.getAuthorId(), userId)) {
             throw new BoardException(CANNOT_MODIFY_OTHER_POST);
         }
 
@@ -108,7 +110,8 @@ public class BoardDataService {
         BoardData entity = repository.findByIdAndDataStateCodeNot(id, D)
                 .orElseThrow(() -> new BoardException(NOT_FOUND_BOARD_DATA));
 
-        if (!entity.getAuthorId().equals(userId)) {
+        // 작성자 본인이거나 관리자(ADMIN/MANAGER)인지 확인
+        if (!permissionService.canDelete(entity.getAuthorId(), userId)) {
             throw new BoardException(CANNOT_DELETE_OTHER_POST);
         }
 

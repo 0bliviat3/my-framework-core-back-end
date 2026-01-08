@@ -68,14 +68,41 @@ public class FileStorageUtil {
     }
 
     /**
-     * 파일 경로 반환
+     * 파일 경로 반환 (경로 조작 공격 방어)
      */
     public Path getFilePath(String fileName) {
-        return Paths.get(properties.getUploadDir()).resolve(fileName).normalize();
+        // 1. 파일명 유효성 검증
+        if (fileName == null || fileName.isEmpty()) {
+            throw new SecurityException("Invalid file name");
+        }
+
+        // 2. 경로 조작 문자 검사
+        if (fileName.contains("..")) {
+            log.error("Path traversal attempt detected: {}", fileName);
+            throw new SecurityException("Path traversal attempt detected");
+        }
+
+        // 3. 경로 정규화
+        Path uploadDir = Paths.get(properties.getUploadDir()).normalize().toAbsolutePath();
+        Path filePath = uploadDir.resolve(fileName).normalize().toAbsolutePath();
+
+        // 4. 파일 경로가 업로드 디렉토리 내에 있는지 검증
+        if (!filePath.startsWith(uploadDir)) {
+            log.error("File access denied. Path: {}, Upload dir: {}", filePath, uploadDir);
+            throw new SecurityException("File access denied");
+        }
+
+        // 5. 심볼릭 링크 검사
+        if (Files.exists(filePath) && Files.isSymbolicLink(filePath)) {
+            log.error("Symbolic link access denied: {}", filePath);
+            throw new SecurityException("Symbolic link access denied");
+        }
+
+        return filePath;
     }
 
     /**
-     * 파일 유효성 검증
+     * 파일 유효성 검증 (보안 강화)
      */
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -84,13 +111,31 @@ public class FileStorageUtil {
 
         // 파일 크기 체크
         if (file.getSize() > properties.getMaxFileSize()) {
+            log.warn("File size exceeds limit: {} bytes", file.getSize());
             throw new BoardException(FILE_UPLOAD_FAILED);
         }
 
         // 확장자 체크
-        String extension = getFileExtension(file.getOriginalFilename());
+        String originalFilename = file.getOriginalFilename();
+        String extension = getFileExtension(originalFilename);
         if (!isAllowedExtension(extension)) {
+            log.warn("File extension not allowed: {}", extension);
             throw new BoardException(FILE_UPLOAD_FAILED);
+        }
+
+        // MIME Type 검증
+        String contentType = file.getContentType();
+        if (contentType == null || !isAllowedContentType(contentType)) {
+            log.warn("Content type not allowed: {}", contentType);
+            throw new BoardException(FILE_UPLOAD_FAILED);
+        }
+
+        // 파일명에 위험한 문자 포함 여부 확인
+        if (originalFilename != null && (originalFilename.contains("..") ||
+                originalFilename.contains("/") ||
+                originalFilename.contains("\\"))) {
+            log.warn("Invalid filename detected: {}", originalFilename);
+            throw new SecurityException("Invalid filename");
         }
     }
 
@@ -100,6 +145,31 @@ public class FileStorageUtil {
     private boolean isAllowedExtension(String extension) {
         return Arrays.asList(properties.getAllowedExtensions())
                 .contains(extension.toLowerCase());
+    }
+
+    /**
+     * 허용된 MIME Type인지 확인
+     */
+    private boolean isAllowedContentType(String contentType) {
+        // 허용된 MIME Type 목록
+        String[] allowedMimeTypes = {
+                // 이미지
+                "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp",
+                // 문서
+                "application/pdf",
+                "application/msword",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/vnd.ms-excel",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.ms-powerpoint",
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                "text/plain",
+                // 압축
+                "application/zip",
+                "application/x-zip-compressed"
+        };
+
+        return Arrays.asList(allowedMimeTypes).contains(contentType.toLowerCase());
     }
 
     /**

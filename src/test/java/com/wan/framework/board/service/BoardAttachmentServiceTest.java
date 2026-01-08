@@ -5,6 +5,9 @@ import com.wan.framework.board.dto.BoardAttachmentDTO;
 import com.wan.framework.board.dto.BoardDataDTO;
 import com.wan.framework.board.dto.BoardMetaDTO;
 import com.wan.framework.board.exception.BoardException;
+import com.wan.framework.user.constant.RoleType;
+import com.wan.framework.user.domain.User;
+import com.wan.framework.user.repositroy.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static com.wan.framework.board.constant.BoardExceptionMessage.NOT_FOUND_ATTACHMENT;
 import static com.wan.framework.board.constant.BoardExceptionMessage.UNAUTHORIZED_ACCESS;
@@ -33,10 +37,18 @@ class BoardAttachmentServiceTest {
     @Autowired
     private BoardMetaService boardMetaService;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private Long testBoardDataId;
 
     @BeforeEach
     void setUp() {
+        // 테스트 사용자 생성
+        createTestUser("user1", RoleType.ROLE_USER);
+        createTestUser("user2", RoleType.ROLE_USER);
+        createTestUser("admin", RoleType.ROLE_ADMIN);
+
         BoardMetaDTO boardMeta = BoardMetaDTO.builder()
                 .title("첨부파일 테스트 게시판")
                 .description("테스트용")
@@ -237,5 +249,18 @@ class BoardAttachmentServiceTest {
                 "Test content".getBytes()
         );
         return service.uploadFile(testBoardDataId, file, "user1");
+    }
+
+    private void createTestUser(String userId, RoleType role) {
+        if (!userRepository.existsById(userId)) {
+            User user = User.builder()
+                    .userId(userId)
+                    .password("password")
+                    .name(userId)
+                    .passwordSalt("salt")
+                    .roles(Set.of(role))
+                    .build();
+            userRepository.save(user);
+        }
     }
 }
