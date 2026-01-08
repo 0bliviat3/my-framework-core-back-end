@@ -20,7 +20,10 @@ public enum ApiKeyExceptionMessage {
     // Authentication
     MISSING_API_KEY("APIKEY_020", "API Key가 제공되지 않았습니다."),
     MISSING_AUTHORIZATION_HEADER("APIKEY_021", "Authorization 헤더가 없거나 Bearer 형식이 아닙니다."),
-    INVALID_BEARER_TOKEN("APIKEY_022", "Bearer 토큰 형식이 올바르지 않습니다.");
+    INVALID_BEARER_TOKEN("APIKEY_022", "Bearer 토큰 형식이 올바르지 않습니다."),
+
+    // Rate Limiting
+    RATE_LIMIT_EXCEEDED("APIKEY_030", "요청 제한을 초과했습니다. 잠시 후 다시 시도해주세요.");
 
     private final String code;
     private final String message;

@@ -2,8 +2,10 @@ package com.wan.framework.apikey.interceptor;
 
 import com.wan.framework.apikey.dto.ApiKeyDTO;
 import com.wan.framework.apikey.exception.ApiKeyException;
+import com.wan.framework.apikey.service.ApiKeyPermissionValidator;
 import com.wan.framework.apikey.service.ApiKeyService;
 import com.wan.framework.apikey.service.ApiKeyUsageHistoryService;
+import com.wan.framework.apikey.service.RateLimitService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,8 @@ public class BearerAuthenticationInterceptor implements HandlerInterceptor {
 
     private final ApiKeyService apiKeyService;
     private final ApiKeyUsageHistoryService usageHistoryService;
+    private final RateLimitService rateLimitService;
+    private final ApiKeyPermissionValidator permissionValidator;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -43,17 +47,23 @@ public class BearerAuthenticationInterceptor implements HandlerInterceptor {
             // 2. Bearer 토큰 추출
             String rawApiKey = authHeader.substring(BEARER_PREFIX.length()).trim();
 
-            // 3. API Key 검증
+            // 3. API Key 검증 (형식, 만료, 활성화 상태)
             ApiKeyDTO apiKeyDTO = apiKeyService.validateApiKey(rawApiKey);
 
-            // 4. Request Attribute에 API Key 정보 저장 (Controller에서 사용 가능)
+            // 4. Rate Limit 확인
+            rateLimitService.checkRateLimit(apiKeyDTO.getId());
+
+            // 5. 권한 검증 (URI와 HTTP Method)
+            permissionValidator.validatePermission(apiKeyDTO, requestUri, requestMethod);
+
+            // 6. Request Attribute에 API Key 정보 저장 (Controller에서 사용 가능)
             request.setAttribute(API_KEY_ATTRIBUTE, apiKeyDTO);
             request.setAttribute(API_KEY_ID_ATTRIBUTE, apiKeyDTO.getId());
 
-            // 5. 사용 횟수 증가
+            // 7. 사용 횟수 증가
             apiKeyService.incrementUsageCount(apiKeyDTO.getId());
 
-            // 6. 성공 이력 기록
+            // 8. 성공 이력 기록
             usageHistoryService.recordUsage(
                     apiKeyDTO.getId(),
                     requestUri,
@@ -65,7 +75,8 @@ public class BearerAuthenticationInterceptor implements HandlerInterceptor {
                     null
             );
 
-            log.debug("API Key 인증 성공: prefix={}, uri={}", apiKeyDTO.getApiKeyPrefix(), requestUri);
+            log.debug("API Key 인증 성공: prefix={}, uri={}, method={}",
+                    apiKeyDTO.getApiKeyPrefix(), requestUri, requestMethod);
             return true;
 
         } catch (ApiKeyException e) {
