@@ -48,6 +48,9 @@ class CodeItemServiceTest {
     @Mock
     private RedisCacheService redisCacheService;
 
+    @Mock
+    private CodeCacheSyncService codeCacheSyncService;
+
     @InjectMocks
     private CodeItemService codeItemService;
 

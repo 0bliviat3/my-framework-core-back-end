@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,6 +38,7 @@ public class CodeItemService {
     private final CodeGroupRepository codeGroupRepository;
     private final CodeItemMapper codeItemMapper;
     private final RedisCacheService redisCacheService;
+    private final CodeCacheSyncService codeCacheSyncService;
 
     private static final String CACHE_PREFIX = "CODE:ITEMS:";
     private static final long CACHE_TTL_SECONDS = 3600; // 1시간
@@ -272,10 +274,13 @@ public class CodeItemService {
 
     /**
      * 전체 코드 캐시 갱신
+     * @return 그룹별 캐시 갱신 결과 (그룹코드 -> 성공여부)
      */
     @Transactional(readOnly = true)
-    public void refreshAllCache() {
+    public Map<String, Boolean> refreshAllCache() {
         log.info("Refreshing all code item cache");
+
+        Map<String, Boolean> results = new HashMap<>();
 
         try {
             // 모든 그룹 코드 조회
@@ -285,13 +290,36 @@ public class CodeItemService {
                     .collect(Collectors.toList());
 
             // 각 그룹별로 캐시 갱신
-            groupCodes.forEach(this::refreshGroupCache);
+            groupCodes.forEach(groupCode -> {
+                try {
+                    refreshGroupCache(groupCode);
+                    results.put(groupCode, true);
+                } catch (Exception e) {
+                    log.error("Failed to refresh cache for group: {}", groupCode, e);
+                    results.put(groupCode, false);
+                }
+            });
 
-            log.info("All code item cache refreshed for {} groups", groupCodes.size());
+            long successCount = results.values().stream().filter(Boolean::booleanValue).count();
+            long failCount = results.size() - successCount;
+
+            log.info("All code item cache refreshed: {} success, {} failed out of {} groups",
+                    successCount, failCount, groupCodes.size());
+
+            if (failCount > 0) {
+                log.warn("Failed groups: {}",
+                        results.entrySet().stream()
+                                .filter(entry -> !entry.getValue())
+                                .map(Map.Entry::getKey)
+                                .collect(Collectors.joining(", ")));
+            }
+
         } catch (Exception e) {
             log.error("Failed to refresh all code item cache", e);
             throw new CodeException(CACHE_REFRESH_FAILED, e);
         }
+
+        return results;
     }
 
     /**
@@ -327,10 +355,13 @@ public class CodeItemService {
     }
 
     /**
-     * 그룹 캐시 무효화
+     * 그룹 캐시 무효화 (모든 서버에 전파)
      */
     private void invalidateGroupCache(String groupCode) {
         String cacheKey = CACHE_PREFIX + groupCode;
         redisCacheService.delete(cacheKey);
+
+        // 모든 서버에 캐시 무효화 메시지 전송
+        codeCacheSyncService.invalidateItemCacheOnAllServers(groupCode);
     }
 }

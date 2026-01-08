@@ -48,6 +48,9 @@ class CodeGroupServiceTest {
     @Mock
     private RedisCacheService redisCacheService;
 
+    @Mock
+    private CodeCacheSyncService codeCacheSyncService;
+
     @InjectMocks
     private CodeGroupService codeGroupService;
 
@@ -172,7 +175,7 @@ class CodeGroupServiceTest {
         // then
         assertThat(result).isNotNull();
         verify(codeGroupRepository).save(any(CodeGroup.class));
-        verify(redisCacheService).delete(anyString());
+        verify(redisCacheService, org.mockito.Mockito.times(2)).delete(anyString()); // 그룹 캐시 + 전체 목록 캐시
     }
 
     @Test
@@ -292,6 +295,6 @@ class CodeGroupServiceTest {
         codeGroupService.refreshAllCache();
 
         // then
-        verify(redisCacheService).set(anyString(), any(), anyLong());
+        verify(redisCacheService, org.mockito.Mockito.times(2)).set(anyString(), any(), anyLong()); // 개별 캐시 + 전체 목록 캐시
     }
 }

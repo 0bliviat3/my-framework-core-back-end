@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -45,5 +46,18 @@ public class RedisConfig {
 
         log.info("RedisTemplate configured with JSON serialization");
         return template;
+    }
+
+    /**
+     * Redis Pub/Sub 메시지 리스너 컨테이너
+     * - 캐시 동기화를 위한 Pub/Sub 지원
+     */
+    @Bean
+    public RedisMessageListenerContainer redisMessageListenerContainer(RedisConnectionFactory connectionFactory) {
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+
+        log.info("RedisMessageListenerContainer configured for Pub/Sub");
+        return container;
     }
 }

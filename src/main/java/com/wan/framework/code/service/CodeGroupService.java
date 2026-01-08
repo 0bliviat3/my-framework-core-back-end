@@ -16,7 +16,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.wan.framework.base.constant.DataStateCode.D;
@@ -37,6 +39,7 @@ public class CodeGroupService {
     private final CodeItemRepository codeItemRepository;
     private final CodeGroupMapper codeGroupMapper;
     private final RedisCacheService redisCacheService;
+    private final CodeCacheSyncService codeCacheSyncService;
 
     private static final String CACHE_PREFIX = "CODE:GROUP:";
     private static final String CACHE_ALL_GROUPS = "CODE:ALL_GROUPS";
@@ -244,10 +247,13 @@ public class CodeGroupService {
 
     /**
      * 전체 그룹 캐시 갱신
+     * @return 그룹별 캐시 갱신 결과 (그룹코드 -> 성공여부)
      */
     @Transactional(readOnly = true)
-    public void refreshAllCache() {
+    public Map<String, Boolean> refreshAllCache() {
         log.info("Refreshing all code group cache");
+
+        Map<String, Boolean> results = new HashMap<>();
 
         try {
             // 전체 그룹 조회
@@ -255,21 +261,46 @@ public class CodeGroupService {
 
             // 개별 캐시 저장
             allGroups.forEach(group -> {
-                CodeGroupDTO dto = codeGroupMapper.toDto(group);
-                cacheCodeGroup(dto);
+                try {
+                    CodeGroupDTO dto = codeGroupMapper.toDto(group);
+                    cacheCodeGroup(dto);
+                    results.put(group.getGroupCode(), true);
+                } catch (Exception e) {
+                    log.error("Failed to cache group: {}", group.getGroupCode(), e);
+                    results.put(group.getGroupCode(), false);
+                }
             });
 
             // 전체 목록 캐시 저장
-            List<CodeGroupDTO> dtoList = allGroups.stream()
-                    .map(codeGroupMapper::toDto)
-                    .collect(Collectors.toList());
-            redisCacheService.set(CACHE_ALL_GROUPS, dtoList, CACHE_TTL_SECONDS);
+            try {
+                List<CodeGroupDTO> dtoList = allGroups.stream()
+                        .map(codeGroupMapper::toDto)
+                        .collect(Collectors.toList());
+                redisCacheService.set(CACHE_ALL_GROUPS, dtoList, CACHE_TTL_SECONDS);
+            } catch (Exception e) {
+                log.error("Failed to cache all groups list", e);
+            }
 
-            log.info("Code group cache refreshed: {} groups", allGroups.size());
+            long successCount = results.values().stream().filter(Boolean::booleanValue).count();
+            long failCount = results.size() - successCount;
+
+            log.info("Code group cache refreshed: {} success, {} failed out of {} groups",
+                    successCount, failCount, allGroups.size());
+
+            if (failCount > 0) {
+                log.warn("Failed groups: {}",
+                        results.entrySet().stream()
+                                .filter(entry -> !entry.getValue())
+                                .map(Map.Entry::getKey)
+                                .collect(Collectors.joining(", ")));
+            }
+
         } catch (Exception e) {
             log.error("Failed to refresh code group cache", e);
             throw new CodeException(CACHE_REFRESH_FAILED, e);
         }
+
+        return results;
     }
 
     // ==================== Private Helper Methods ====================
@@ -283,17 +314,23 @@ public class CodeGroupService {
     }
 
     /**
-     * 그룹 캐시 삭제
+     * 그룹 캐시 삭제 (모든 서버에 전파)
      */
     private void removeCacheByGroupCode(String groupCode) {
         String cacheKey = CACHE_PREFIX + groupCode;
         redisCacheService.delete(cacheKey);
+
+        // 모든 서버에 캐시 무효화 메시지 전송
+        codeCacheSyncService.invalidateGroupCacheOnAllServers(groupCode);
     }
 
     /**
-     * 전체 그룹 목록 캐시 무효화
+     * 전체 그룹 목록 캐시 무효화 (모든 서버에 전파)
      */
     private void invalidateAllGroupsCache() {
         redisCacheService.delete(CACHE_ALL_GROUPS);
+
+        // 모든 서버에 캐시 무효화 메시지 전송
+        codeCacheSyncService.invalidateAllCacheOnAllServers();
     }
 }
