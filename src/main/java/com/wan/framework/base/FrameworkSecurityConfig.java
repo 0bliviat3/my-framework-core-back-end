@@ -19,7 +19,11 @@ public class FrameworkSecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+                .authorizeHttpRequests(auth -> auth
+                        // 세션 없이 접근 가능한 API
+                        // - /users/admin/exists: 최초 접속 시 관리자 계정 존재 확인
+                        .anyRequest().permitAll()
+                );
 
         return http.build();
     }
@@ -27,7 +31,7 @@ public class FrameworkSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:9527")); // 프론트엔드 주소
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000")); // 프론트엔드 주소
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);  // 쿠키/세션 포함 허용

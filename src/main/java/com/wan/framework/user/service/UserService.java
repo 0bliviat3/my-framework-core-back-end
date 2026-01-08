@@ -1,5 +1,6 @@
 package com.wan.framework.user.service;
 
+import com.wan.framework.user.constant.RoleType;
 import com.wan.framework.user.domain.User;
 import com.wan.framework.user.dto.UserDTO;
 import com.wan.framework.user.mapper.UserMapper;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.Set;
 
 import static com.wan.framework.base.constant.DataStateCode.D;
 
@@ -72,6 +74,19 @@ public class UserService {
 
     public boolean existsById(String userId) {
         return userRepository.existsById(userId);
+    }
+
+    /**
+     * 관리자 계정 존재 여부 확인
+     * - ROLE_ADMIN 권한을 가진 활성 사용자가 있는지 확인
+     *
+     * @return 관리자 계정 존재 여부
+     */
+    public boolean hasAdminAccount() {
+        return userRepository.findAll().stream()
+                .filter(user -> user.getDataCode() != D)  // 삭제되지 않은 사용자만
+                .anyMatch(user -> user.getRoles() != null &&
+                        user.getRoles().contains(RoleType.ROLE_ADMIN));
     }
 
 }

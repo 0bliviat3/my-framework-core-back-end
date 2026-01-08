@@ -35,7 +35,8 @@ public class SessionValidationFilter implements Filter {
             "/error",
             "/actuator",
             "/swagger-ui",
-            "/v3/api-docs"
+            "/v3/api-docs",
+            "/users/admin/exists"
     );
 
     @Override

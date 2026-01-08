@@ -27,7 +27,7 @@ public class FrameworkWebMVCConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:9527") // 프론트엔드 주소
+                .allowedOrigins("http://localhost:3000") // 프론트엔드 주소
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true); // 쿠키/세션 포함 허용 시

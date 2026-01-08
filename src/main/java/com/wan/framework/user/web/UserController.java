@@ -2,6 +2,7 @@ package com.wan.framework.user.web;
 
 import com.wan.framework.user.dto.UserDTO;
 import com.wan.framework.user.service.SignService;
+import com.wan.framework.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final SignService signService;
+    private final UserService userService;
 
     /**
      * 회원가입
@@ -86,6 +88,18 @@ public class UserController {
         log.info("GET /users/exists/{}", userId);
         boolean exists = signService.isExistUserId(userId);
         return ResponseEntity.ok(exists);
+    }
+
+    /**
+     * 관리자 계정 존재 여부 확인
+     * - 최초 접속 시 관리자 계정이 있는지 확인하기 위한 API
+     * - 세션 없이 접근 가능 (SecurityConfig에서 허용 필요)
+     */
+    @GetMapping("/admin/exists")
+    public ResponseEntity<Boolean> hasAdminAccount() {
+        log.info("GET /users/admin/exists");
+        boolean hasAdmin = userService.hasAdminAccount();
+        return ResponseEntity.ok(hasAdmin);
     }
 
 }

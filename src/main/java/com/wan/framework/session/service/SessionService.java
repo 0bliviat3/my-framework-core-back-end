@@ -73,8 +73,8 @@ public class SessionService {
             session.setAttribute(ATTR_USER_ID, userId);
             session.setAttribute(ATTR_USERNAME, username);
             session.setAttribute(ATTR_ROLES, roles);
-            session.setAttribute(ATTR_LOGIN_TIME, LocalDateTime.now());
-            session.setAttribute(ATTR_LAST_ACCESS_TIME, LocalDateTime.now());
+            session.setAttribute(ATTR_LOGIN_TIME, LocalDateTime.now().toString());
+            session.setAttribute(ATTR_LAST_ACCESS_TIME, LocalDateTime.now().toString());
 
             // 보안 정보 저장
             String ipAddress = getClientIP(request);
@@ -125,8 +125,8 @@ public class SessionService {
         String username = (String) session.getAttribute(ATTR_USERNAME);
         @SuppressWarnings("unchecked")
         List<String> roles = (List<String>) session.getAttribute(ATTR_ROLES);
-        LocalDateTime loginTime = (LocalDateTime) session.getAttribute(ATTR_LOGIN_TIME);
-        LocalDateTime lastAccessTime = (LocalDateTime) session.getAttribute(ATTR_LAST_ACCESS_TIME);
+        LocalDateTime loginTime = LocalDateTime.parse((String) session.getAttribute(ATTR_LOGIN_TIME));
+        LocalDateTime lastAccessTime = LocalDateTime.parse((String) session.getAttribute(ATTR_LAST_ACCESS_TIME));
 
         // 남은 시간 계산
         int maxInactiveInterval = session.getMaxInactiveInterval();
@@ -213,7 +213,7 @@ public class SessionService {
         }
 
         // 마지막 접근 시간 업데이트
-        session.setAttribute(ATTR_LAST_ACCESS_TIME, LocalDateTime.now());
+        session.setAttribute(ATTR_LAST_ACCESS_TIME, LocalDateTime.now().toString());
 
         // Redis TTL 갱신 (Spring Session이 자동으로 처리하지만 명시적으로 갱신)
         try {
