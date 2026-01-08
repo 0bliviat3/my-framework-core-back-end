@@ -102,4 +102,17 @@ public class UserController {
         return ResponseEntity.ok(hasAdmin);
     }
 
+    /**
+     * 초기 관리자 계정 생성
+     * - 관리자 계정이 없을 때만 사용 가능
+     * - ROLE_ADMIN 권한 자동 부여
+     * - 세션 없이 접근 가능
+     */
+    @PostMapping("/admin/initial")
+    public ResponseEntity<String> createInitialAdmin(@RequestBody UserDTO userDTO) {
+        log.info("POST /users/admin/initial - userId: {}", userDTO.getUserId());
+        signService.createInitialAdmin(userDTO);
+        return ResponseEntity.ok("초기 관리자 계정이 생성되었습니다.");
+    }
+
 }

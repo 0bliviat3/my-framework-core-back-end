@@ -22,6 +22,7 @@ public class FrameworkSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 세션 없이 접근 가능한 API
                         // - /users/admin/exists: 최초 접속 시 관리자 계정 존재 확인
+                        // - /users/admin/initial: 초기 관리자 계정 생성
                         .anyRequest().permitAll()
                 );
 

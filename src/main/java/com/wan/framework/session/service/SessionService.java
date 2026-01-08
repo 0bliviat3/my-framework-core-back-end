@@ -324,47 +324,69 @@ public class SessionService {
 
     /**
      * 동시 로그인 제한 확인
+     * - Redis 직렬화 오류 방지를 위해 단순 카운트만 사용
      */
     private void checkConcurrentSessions(String userId) {
-        // Redis에서 해당 사용자의 모든 세션 조회
-        String pattern = REDIS_SESSION_PREFIX + "*";
-        Set<String> sessionKeys = redisTemplate.keys(pattern);
+        try {
+            // Redis에서 해당 사용자의 세션 키 패턴으로 조회
+            // Spring Session의 기본 키 구조: spring:session:sessions:expires:<sessionId>
+            String expiresPattern = "spring:session:sessions:expires:*";
+            Set<String> expiresKeys = redisTemplate.keys(expiresPattern);
 
-        if (sessionKeys == null || sessionKeys.isEmpty()) {
-            return;
-        }
+            if (expiresKeys == null || expiresKeys.isEmpty()) {
+                log.debug("No active sessions found");
+                return;
+            }
 
-        // 동일 사용자의 세션 필터링
-        List<String> userSessions = new ArrayList<>();
-        for (String key : sessionKeys) {
-            try {
-                Object sessionObj = redisTemplate.opsForValue().get(key);
-                if (sessionObj != null) {
-                    // Spring Session의 MapSession 구조에서 userId 추출
-                    String sessionUserId = extractUserIdFromSession(sessionObj);
-                    if (userId.equals(sessionUserId)) {
-                        userSessions.add(key);
+            // 활성 세션 수만 카운트 (직렬화 문제 회피)
+            int activeSessions = 0;
+            List<String> sessionIds = new ArrayList<>();
+
+            for (String expiresKey : expiresKeys) {
+                // expires 키에서 sessionId 추출
+                String sessionId = expiresKey.replace("spring:session:sessions:expires:", "");
+                sessionIds.add(sessionId);
+                activeSessions++;
+
+                // 성능 최적화: maxSessions를 초과하면 더 이상 카운트하지 않음
+                int maxSessions = sessionProperties.getConcurrent().getMaxSessions();
+                if (activeSessions > maxSessions) {
+                    break;
+                }
+            }
+
+            int maxSessions = sessionProperties.getConcurrent().getMaxSessions();
+            boolean preventLogin = sessionProperties.getConcurrent().isPreventLogin();
+
+            log.debug("Found {} active sessions (max: {})", activeSessions, maxSessions);
+
+            if (activeSessions >= maxSessions) {
+                if (preventLogin) {
+                    // 새 로그인 차단
+                    log.warn("Concurrent session limit exceeded: {} >= {}", activeSessions, maxSessions);
+                    throw new SessionException(SessionExceptionMessage.CONCURRENT_SESSION_LIMIT_EXCEEDED);
+                } else {
+                    // 가장 오래된 세션 종료
+                    if (!sessionIds.isEmpty()) {
+                        String oldestSessionId = sessionIds.get(0);
+                        String sessionKey = REDIS_SESSION_PREFIX + oldestSessionId;
+                        String expiresKey = "spring:session:sessions:expires:" + oldestSessionId;
+
+                        redisTemplate.delete(sessionKey);
+                        redisTemplate.delete(expiresKey);
+
+                        log.info("Terminated oldest session due to concurrent login limit: {}", oldestSessionId);
+                        saveAuditLog(oldestSessionId, userId, EVENT_CONCURRENT_LOGOUT, null, null,
+                                "Terminated due to concurrent session limit");
                     }
                 }
-            } catch (Exception e) {
-                log.warn("Failed to check session: {}", key, e);
             }
-        }
-
-        int maxSessions = sessionProperties.getConcurrent().getMaxSessions();
-        boolean preventLogin = sessionProperties.getConcurrent().isPreventLogin();
-
-        log.debug("User {} has {} active sessions (max: {})", userId, userSessions.size(), maxSessions);
-
-        if (userSessions.size() >= maxSessions) {
-            if (preventLogin) {
-                // 새 로그인 차단
-                log.warn("Concurrent session limit exceeded for user: {}", userId);
-                throw new SessionException(SessionExceptionMessage.CONCURRENT_SESSION_LIMIT_EXCEEDED);
-            } else {
-                // 가장 오래된 세션 종료
-                terminateOldestSession(userSessions);
-            }
+        } catch (SessionException e) {
+            // SessionException은 그대로 throw
+            throw e;
+        } catch (Exception e) {
+            // 기타 예외는 로그만 남기고 계속 진행 (Fail-Open)
+            log.error("Failed to check concurrent sessions, allowing login", e);
         }
     }
 

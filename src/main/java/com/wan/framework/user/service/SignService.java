@@ -1,5 +1,6 @@
 package com.wan.framework.user.service;
 
+import com.wan.framework.user.constant.RoleType;
 import com.wan.framework.user.dto.UserDTO;
 import com.wan.framework.user.exception.UserException;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +9,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Set;
 
 import static com.wan.framework.user.constant.UserExceptionMessage.*;
 
@@ -143,6 +146,43 @@ public class SignService {
 
     public UserDTO findById(String userId) {
         return userService.findById(userId).removePass();
+    }
+
+    /**
+     * 초기 관리자 계정 생성
+     * - 관리자 계정이 없을 때만 생성 가능
+     * - ROLE_ADMIN 권한 자동 부여
+     *
+     * @param userDTO 관리자 정보 (userId, password, name)
+     * @throws UserException 이미 관리자 계정이 존재하거나 ID가 중복된 경우
+     */
+    @Transactional
+    public void createInitialAdmin(UserDTO userDTO) {
+        // 1. 관리자 계정이 이미 존재하는지 확인
+        if (userService.hasAdminAccount()) {
+            throw new UserException(USED_ID); // 또는 별도 예외 메시지 사용 가능
+        }
+
+        // 2. 사용자 ID 중복 확인
+        if (isExistUserId(userDTO.getUserId())) {
+            throw new UserException(USED_ID);
+        }
+
+        // 3. 비밀번호 암호화
+        String saltBase64 = passwordService.generateSaltBase64();
+        String hashed = passwordService.hashPassword(userDTO.getPassword(), saltBase64);
+
+        // 4. ROLE_ADMIN 권한 부여
+        UserDTO toSave = UserDTO.builder()
+                .userId(userDTO.getUserId())
+                .password(hashed)
+                .name(userDTO.getName())
+                .passwordSalt(saltBase64)
+                .roles(Set.of(RoleType.ROLE_ADMIN, RoleType.ROLE_USER))  // 관리자 + 일반 사용자 권한
+                .build();
+
+        userService.saveUser(toSave);
+        log.info("초기 관리자 계정 생성 완료: {}", userDTO.getUserId());
     }
 
 }
