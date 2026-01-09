@@ -137,6 +137,8 @@ public class ApiRegistryScanService {
         Map<RequestMappingInfo, HandlerMethod> handlerMethods =
                 requestMappingHandlerMapping.getHandlerMethods();
 
+        log.debug("Total handler methods found: {}", handlerMethods.size());
+
         for (Map.Entry<RequestMappingInfo, HandlerMethod> entry : handlerMethods.entrySet()) {
             RequestMappingInfo mappingInfo = entry.getKey();
             HandlerMethod handlerMethod = entry.getValue();
@@ -151,10 +153,29 @@ public class ApiRegistryScanService {
                 methods = Set.of("GET");
             }
 
-            // URI Patterns 추출
-            Set<String> patterns = mappingInfo.getPatternsCondition() != null
-                    ? mappingInfo.getPatternsCondition().getPatterns()
-                    : Set.of();
+            // URI Patterns 추출 (Spring Boot 3.x 호환)
+            Set<String> patterns = new HashSet<>();
+
+            // PathPatternsCondition 사용 (Spring Boot 3.x)
+            if (mappingInfo.getPathPatternsCondition() != null) {
+                patterns = mappingInfo.getPathPatternsCondition().getPatterns().stream()
+                        .map(Object::toString)
+                        .collect(Collectors.toSet());
+                log.debug("Using PathPatternsCondition: {}", patterns);
+            }
+            // PatternsCondition 사용 (Fallback for older versions)
+            else if (mappingInfo.getPatternsCondition() != null) {
+                patterns = mappingInfo.getPatternsCondition().getPatterns();
+                log.debug("Using PatternsCondition: {}", patterns);
+            }
+
+            // 패턴이 없으면 스킵
+            if (patterns.isEmpty()) {
+                log.warn("No patterns found for handler: {}.{}",
+                        handlerMethod.getBeanType().getSimpleName(),
+                        handlerMethod.getMethod().getName());
+                continue;
+            }
 
             // Controller 및 Handler 정보
             String controllerName = handlerMethod.getBeanType().getName();
@@ -175,6 +196,10 @@ public class ApiRegistryScanService {
                             .build();
 
                     apiMap.put(identifier, apiInfo);
+                    log.debug("Registered API: {} {} -> {}.{}",
+                            method, pattern,
+                            handlerMethod.getBeanType().getSimpleName(),
+                            handlerMethodName);
                 }
             }
         }
