@@ -4,6 +4,7 @@ import com.wan.framework.base.constant.DataStateCode;
 import com.wan.framework.user.constant.RoleType;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -19,6 +20,8 @@ public class UserDTO {
     private DataStateCode dataCode;
     private String passwordSalt;
     private Set<RoleType> roles;
+    private LocalDateTime createTime;
+    private LocalDateTime modifiedTime;
 
     /**
      * 비밀번호 및 Salt 제거 (보안)

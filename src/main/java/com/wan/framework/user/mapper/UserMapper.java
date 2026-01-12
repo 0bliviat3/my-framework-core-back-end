@@ -9,7 +9,7 @@ import org.mapstruct.Mapping;
 public interface UserMapper {
     UserDTO toDto(User user);
 
-    @Mapping(target = "createTime", ignore = true)
+
     @Mapping(target = "modifiedTime", ignore = true)
     User toEntity(UserDTO dto);
 }

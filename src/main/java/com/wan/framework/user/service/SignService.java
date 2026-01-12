@@ -36,24 +36,34 @@ public class SignService {
 
     /**
      * 회원가입
+     * - 일반 사용자 생성
+     * - ROLE_USER 권한 자동 부여
+     *
+     * @param userDTO 사용자 정보 (userId, password, name)
+     * @throws UserException ID가 중복된 경우
      */
     @Transactional
     public void signUp(UserDTO userDTO) {
+        // 1. 사용자 ID 중복 확인
         if (isExistUserId(userDTO.getUserId())) {
             throw new UserException(USED_ID);
         }
 
+        // 2. 비밀번호 암호화
         String saltBase64 = passwordService.generateSaltBase64();
         String hashed = passwordService.hashPassword(userDTO.getPassword(), saltBase64);
 
+        // 3. ROLE_USER 권한 부여
         UserDTO toSave = UserDTO.builder()
                 .userId(userDTO.getUserId())
                 .password(hashed)
                 .name(userDTO.getName())
                 .passwordSalt(saltBase64)
+                .roles(Set.of(RoleType.ROLE_USER))  // 일반 사용자 권한
                 .build();
 
         userService.saveUser(toSave);
+        log.info("일반 사용자 회원가입 완료: {}", userDTO.getUserId());
     }
 
     /**
