@@ -32,13 +32,19 @@ public interface ApiRegistryRepository extends JpaRepository<ApiRegistry, Long> 
     List<ApiRegistry> findByStatus(ApiStatus status);
 
     /**
-     * HTTP Method와 URI Pattern으로 활성 API 조회
+     * HTTP Method와 URI Pattern으로 활성 API 조회 (정확한 매칭)
      */
     @Query("SELECT a FROM ApiRegistry a WHERE a.httpMethod = :method AND a.uriPattern = :uri AND a.status = 'ACTIVE'")
     Optional<ApiRegistry> findActiveApiByMethodAndUri(
         @Param("method") String method,
         @Param("uri") String uri
     );
+
+    /**
+     * HTTP Method로 모든 활성 API 조회 (패턴 매칭용)
+     */
+    @Query("SELECT a FROM ApiRegistry a WHERE a.httpMethod = :method AND a.status = 'ACTIVE'")
+    List<ApiRegistry> findActiveApisByMethod(@Param("method") String method);
 
     /**
      * 인증 필요 여부로 조회
