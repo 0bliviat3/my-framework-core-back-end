@@ -1,5 +1,6 @@
 package com.wan.framework.session.filter;
 
+import com.wan.framework.base.constant.PublicApiConstants;
 import com.wan.framework.session.service.SessionService;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,8 +11,6 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * 세션 검증 필터
@@ -26,20 +25,6 @@ public class SessionValidationFilter implements Filter {
 
     private final SessionService sessionService;
 
-    // 세션 검증 제외 경로
-    private static final List<String> EXCLUDED_PATHS = Arrays.asList(
-            "/sessions/login",
-            "/sessions/logout",
-            "/users/sign-in",
-            "/users/sign-up",
-            "/error",
-            "/actuator",
-            "/swagger-ui",
-            "/v3/api-docs",
-            "/users/admin/exists",
-            "/users/admin/initial"
-    );
-
     @Override
     public void doFilter(ServletRequest servletRequest,
                         ServletResponse servletResponse,
@@ -50,8 +35,8 @@ public class SessionValidationFilter implements Filter {
 
         String requestURI = request.getRequestURI();
 
-        // 제외 경로 체크
-        if (isExcludedPath(requestURI)) {
+        // 공개 API는 세션 검증 제외
+        if (PublicApiConstants.isPublicApi(requestURI)) {
             chain.doFilter(request, response);
             return;
         }
@@ -73,12 +58,5 @@ public class SessionValidationFilter implements Filter {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.getWriter().write("{\"error\":\"Session validation failed\"}");
         }
-    }
-
-    /**
-     * 제외 경로 확인
-     */
-    private boolean isExcludedPath(String requestURI) {
-        return EXCLUDED_PATHS.stream().anyMatch(requestURI::startsWith);
     }
 }

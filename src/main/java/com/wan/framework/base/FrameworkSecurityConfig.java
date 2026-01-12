@@ -19,6 +19,7 @@ public class FrameworkSecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))  // CORS 설정 적용
                 .authorizeHttpRequests(auth -> auth
                         // 세션 없이 접근 가능한 API
                         // - /users/admin/exists: 최초 접속 시 관리자 계정 존재 확인

@@ -1,5 +1,6 @@
 package com.wan.framework.permission.service;
 
+import com.wan.framework.base.constant.PublicApiConstants;
 import com.wan.framework.permission.constant.ApiStatus;
 import com.wan.framework.permission.constant.PermissionConstants;
 import com.wan.framework.permission.domain.ApiRegistry;
@@ -67,6 +68,9 @@ public class ApiRegistryScanService {
 
                 if (existing == null) {
                     // 신규 API INSERT
+                    // 공개 API인지 확인하여 authRequired 설정
+                    boolean isPublicApi = PublicApiConstants.isPublicApi(apiInfo.uriPattern);
+
                     ApiRegistry newApi = ApiRegistry.builder()
                             .serviceId(apiInfo.serviceId)
                             .httpMethod(apiInfo.httpMethod)
@@ -74,16 +78,17 @@ public class ApiRegistryScanService {
                             .controllerName(apiInfo.controllerName)
                             .handlerMethod(apiInfo.handlerMethod)
                             .description(apiInfo.description)
-                            .authRequired(true)  // 기본값: 인증 필요
+                            .authRequired(!isPublicApi)  // 공개 API는 인증 불필요
                             .status(ApiStatus.ACTIVE)
                             .build();
 
                     apiRegistryRepository.save(newApi);
                     insertCount++;
-                    log.debug("INSERT: {} {} {}", apiInfo.httpMethod, apiInfo.uriPattern, apiInfo.handlerMethod);
+                    log.debug("INSERT: {} {} {} (authRequired={})",
+                            apiInfo.httpMethod, apiInfo.uriPattern, apiInfo.handlerMethod, !isPublicApi);
 
                 } else {
-                    // 기존 API UPDATE (컨트롤러명, 핸들러명, 설명 변경 가능)
+                    // 기존 API UPDATE (컨트롤러명, 핸들러명, 설명, authRequired 변경 가능)
                     boolean updated = false;
 
                     if (!Objects.equals(existing.getControllerName(), apiInfo.controllerName) ||
@@ -92,6 +97,17 @@ public class ApiRegistryScanService {
 
                         existing.updateInfo(apiInfo.controllerName, apiInfo.handlerMethod, apiInfo.description);
                         updated = true;
+                    }
+
+                    // 공개 API 여부 확인 후 authRequired 업데이트
+                    boolean isPublicApi = PublicApiConstants.isPublicApi(apiInfo.uriPattern);
+                    boolean expectedAuthRequired = !isPublicApi;
+
+                    if (existing.getAuthRequired() != expectedAuthRequired) {
+                        existing.setAuthRequired(expectedAuthRequired);
+                        updated = true;
+                        log.info("UPDATE authRequired: {} {} -> authRequired={}",
+                                apiInfo.httpMethod, apiInfo.uriPattern, expectedAuthRequired);
                     }
 
                     // INACTIVE 상태였다면 다시 ACTIVE로 변경
