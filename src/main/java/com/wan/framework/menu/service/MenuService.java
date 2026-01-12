@@ -88,7 +88,7 @@ public class MenuService {
     }
 
     /**
-     * 권한별 메뉴 조회
+     * 권한별 메뉴 조회 (String 타입)
      */
     @Transactional(readOnly = true)
     public MenuTreeNodeDTO findAllTreeByRoles(String roles) {
@@ -96,6 +96,32 @@ public class MenuService {
                 .map(it -> new MenuTreeNodeDTO(menuMapper.toDTO(it), null))
                 .collect(Collectors.toMap(menuTreeNodeDTO -> menuTreeNodeDTO.getMenuDTO().getId(), dto -> dto));
         return new MenuTree(menuTreeNodeDTOs).getMenus();
+    }
+
+    /**
+     * 권한별 메뉴 조회 (List<String> 타입)
+     * - 세션에서 가져온 roles 리스트로 메뉴 조회
+     * - roles 리스트의 각 role에 해당하는 메뉴를 모두 조회하여 병합
+     */
+    @Transactional(readOnly = true)
+    public MenuTreeNodeDTO findAllTreeByRoles(List<String> rolesList) {
+        if (rolesList == null || rolesList.isEmpty()) {
+            // roles가 없으면 빈 트리 반환
+            return new MenuTree(Map.of()).getMenus();
+        }
+
+        // 각 role에 대해 메뉴 조회 후 병합 (중복 제거)
+        Map<Long, MenuTreeNodeDTO> allMenus = rolesList.stream()
+                .flatMap(role -> menuRepository.findAllByDataStateCodeNotAndRoles(D, role).stream())
+                .distinct() // 중복 제거
+                .map(menu -> new MenuTreeNodeDTO(menuMapper.toDTO(menu), null))
+                .collect(Collectors.toMap(
+                        menuTreeNodeDTO -> menuTreeNodeDTO.getMenuDTO().getId(),
+                        dto -> dto,
+                        (existing, replacement) -> existing // 중복 시 기존 값 유지
+                ));
+
+        return new MenuTree(allMenus).getMenus();
     }
 
     /**
