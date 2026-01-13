@@ -1,5 +1,6 @@
 package com.wan.framework.board.mapper;
 
+import com.wan.framework.base.constant.DataStateCode;
 import com.wan.framework.board.domain.BoardComment;
 import com.wan.framework.board.domain.BoardData;
 import com.wan.framework.board.dto.BoardCommentDTO;
@@ -10,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-01-07T13:23:51+0900",
+    date = "2026-01-13T20:35:41+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.15 (OpenLogic)"
 )
 @Component
@@ -48,13 +49,21 @@ public class BoardCommentMapperImpl implements BoardCommentMapper {
 
         BoardComment.BoardCommentBuilder boardComment = BoardComment.builder();
 
-        boardComment.boardData( boardCommentDTOToBoardData( dto ) );
-        boardComment.parent( boardCommentDTOToBoardComment( dto ) );
+        if ( dto.getIsModified() != null ) {
+            boardComment.isModified( dto.getIsModified() );
+        }
+        else {
+            boardComment.isModified( false );
+        }
+        if ( dto.getDataStateCode() != null ) {
+            boardComment.dataStateCode( dto.getDataStateCode() );
+        }
+        else {
+            boardComment.dataStateCode( DataStateCode.I );
+        }
         boardComment.id( dto.getId() );
         boardComment.authorId( dto.getAuthorId() );
         boardComment.content( dto.getContent() );
-        boardComment.isModified( dto.getIsModified() );
-        boardComment.dataStateCode( dto.getDataStateCode() );
 
         return boardComment.build();
     }
@@ -112,29 +121,5 @@ public class BoardCommentMapperImpl implements BoardCommentMapper {
             return null;
         }
         return id;
-    }
-
-    protected BoardData boardCommentDTOToBoardData(BoardCommentDTO boardCommentDTO) {
-        if ( boardCommentDTO == null ) {
-            return null;
-        }
-
-        BoardData.BoardDataBuilder boardData = BoardData.builder();
-
-        boardData.id( boardCommentDTO.getBoardDataId() );
-
-        return boardData.build();
-    }
-
-    protected BoardComment boardCommentDTOToBoardComment(BoardCommentDTO boardCommentDTO) {
-        if ( boardCommentDTO == null ) {
-            return null;
-        }
-
-        BoardComment.BoardCommentBuilder boardComment = BoardComment.builder();
-
-        boardComment.id( boardCommentDTO.getParentId() );
-
-        return boardComment.build();
     }
 }

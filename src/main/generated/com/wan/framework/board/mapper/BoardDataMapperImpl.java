@@ -1,5 +1,7 @@
 package com.wan.framework.board.mapper;
 
+import com.wan.framework.base.constant.DataStateCode;
+import com.wan.framework.board.constant.BoardDataStatus;
 import com.wan.framework.board.domain.BoardData;
 import com.wan.framework.board.domain.BoardMeta;
 import com.wan.framework.board.dto.BoardDataDTO;
@@ -8,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-01-07T13:23:51+0900",
+    date = "2026-01-13T20:26:17+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.15 (OpenLogic)"
 )
 @Component
@@ -46,20 +48,40 @@ public class BoardDataMapperImpl implements BoardDataMapper {
             return null;
         }
 
-        BoardData.BoardDataBuilder boardData = BoardData.builder();
+        BoardData boardData = new BoardData();
 
-        boardData.boardMeta( boardDataDTOToBoardMeta( dto ) );
-        boardData.id( dto.getId() );
-        boardData.authorId( dto.getAuthorId() );
-        boardData.title( dto.getTitle() );
-        boardData.content( dto.getContent() );
-        boardData.fieldDataJson( dto.getFieldDataJson() );
-        boardData.status( dto.getStatus() );
-        boardData.viewCount( dto.getViewCount() );
-        boardData.commentCount( dto.getCommentCount() );
-        boardData.dataStateCode( dto.getDataStateCode() );
+        boardData.setBoardMeta( boardDataDTOToBoardMeta( dto ) );
+        if ( dto.getStatus() != null ) {
+            boardData.setStatus( dto.getStatus() );
+        }
+        else {
+            boardData.setStatus( BoardDataStatus.PUBLISHED );
+        }
+        if ( dto.getDataStateCode() != null ) {
+            boardData.setDataStateCode( dto.getDataStateCode() );
+        }
+        else {
+            boardData.setDataStateCode( DataStateCode.I );
+        }
+        if ( dto.getViewCount() != null ) {
+            boardData.setViewCount( dto.getViewCount() );
+        }
+        else {
+            boardData.setViewCount( (long) 0L );
+        }
+        if ( dto.getCommentCount() != null ) {
+            boardData.setCommentCount( dto.getCommentCount() );
+        }
+        else {
+            boardData.setCommentCount( 0 );
+        }
+        boardData.setId( dto.getId() );
+        boardData.setAuthorId( dto.getAuthorId() );
+        boardData.setTitle( dto.getTitle() );
+        boardData.setContent( dto.getContent() );
+        boardData.setFieldDataJson( dto.getFieldDataJson() );
 
-        return boardData.build();
+        return boardData;
     }
 
     @Override
@@ -117,10 +139,10 @@ public class BoardDataMapperImpl implements BoardDataMapper {
             return null;
         }
 
-        BoardMeta.BoardMetaBuilder boardMeta = BoardMeta.builder();
+        BoardMeta boardMeta = new BoardMeta();
 
-        boardMeta.id( boardDataDTO.getBoardMetaId() );
+        boardMeta.setId( boardDataDTO.getBoardMetaId() );
 
-        return boardMeta.build();
+        return boardMeta;
     }
 }

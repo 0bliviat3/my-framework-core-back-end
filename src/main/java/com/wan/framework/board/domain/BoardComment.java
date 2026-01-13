@@ -35,7 +35,7 @@ public class BoardComment {
     @JoinColumn(name = "parent_id")
     private BoardComment parent; // 부모 댓글 (대댓글용)
 
-    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "parent", orphanRemoval = true)
     @Builder.Default
     private List<BoardComment> children = new ArrayList<>(); // 자식 댓글들
 

@@ -15,6 +15,11 @@ public interface BoardDataMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "publishedAt", ignore = true)
+    @Mapping(target = "status", defaultValue = "PUBLISHED")
+    @Mapping(target = "dataStateCode", defaultValue = "I")
+    @Mapping(target = "viewCount", defaultValue = "0L")
+    @Mapping(target = "commentCount", defaultValue = "0")
+    @BeanMapping(builder = @Builder(disableBuilder = true))
     BoardData toEntity(BoardDataDTO dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
