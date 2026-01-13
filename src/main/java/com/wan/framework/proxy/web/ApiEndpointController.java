@@ -2,6 +2,9 @@ package com.wan.framework.proxy.web;
 
 import com.wan.framework.proxy.dto.ApiEndpointDTO;
 import com.wan.framework.proxy.service.ApiEndpointService;
+import com.wan.framework.session.dto.SessionDTO;
+import com.wan.framework.session.service.SessionService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -20,13 +23,16 @@ import org.springframework.web.bind.annotation.*;
 public class ApiEndpointController {
 
     private final ApiEndpointService apiEndpointService;
+    private final SessionService sessionService;
 
     /**
      * API 엔드포인트 생성
      */
     @PostMapping
-    public ResponseEntity<ApiEndpointDTO> createApiEndpoint(@RequestBody ApiEndpointDTO dto) {
+    public ResponseEntity<ApiEndpointDTO> createApiEndpoint(@RequestBody ApiEndpointDTO dto, HttpServletRequest request) {
         log.info("Creating API endpoint: {}", dto.getApiCode());
+        SessionDTO sessionDTO = sessionService.getCurrentSession(request);
+        dto.setCreatedBy(sessionDTO.getUserId());
         ApiEndpointDTO created = apiEndpointService.createApiEndpoint(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
