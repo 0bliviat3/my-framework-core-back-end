@@ -1,7 +1,7 @@
 package com.wan.framework.permission.web;
 
-import com.wan.framework.permission.domain.ApiRegistry;
-import com.wan.framework.permission.domain.RoleApiPermission;
+import com.wan.framework.permission.dto.ApiRegistryDTO;
+import com.wan.framework.permission.dto.RoleApiPermissionDTO;
 import com.wan.framework.permission.dto.RoleDTO;
 import com.wan.framework.permission.service.PermissionService;
 import lombok.RequiredArgsConstructor;
@@ -78,9 +78,9 @@ public class PermissionController {
      * 활성 API 목록 조회
      */
     @GetMapping("/apis")
-    public ResponseEntity<List<ApiRegistry>> getActiveApis() {
+    public ResponseEntity<List<ApiRegistryDTO>> getActiveApis() {
         log.info("GET /permissions/apis");
-        List<ApiRegistry> apis = permissionService.getActiveApis();
+        List<ApiRegistryDTO> apis = permissionService.getActiveApis();
         return ResponseEntity.ok(apis);
     }
 
@@ -88,9 +88,9 @@ public class PermissionController {
      * Role별 권한 목록 조회
      */
     @GetMapping("/roles/{roleId}/permissions")
-    public ResponseEntity<List<RoleApiPermission>> getRolePermissions(@PathVariable Long roleId) {
+    public ResponseEntity<List<RoleApiPermissionDTO>> getRolePermissions(@PathVariable Long roleId) {
         log.info("GET /permissions/roles/{}/permissions", roleId);
-        List<RoleApiPermission> permissions = permissionService.getRolePermissions(roleId);
+        List<RoleApiPermissionDTO> permissions = permissionService.getRolePermissions(roleId);
         return ResponseEntity.ok(permissions);
     }
 

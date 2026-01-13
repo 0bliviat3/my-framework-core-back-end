@@ -1,5 +1,8 @@
 package com.wan.framework.redis.config;
 
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,6 +12,7 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Redis 설정
@@ -20,7 +24,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @Slf4j
 @Configuration
 @EnableScheduling
+@AllArgsConstructor
 public class RedisConfig {
+
+    private final ObjectMapper objectMapper;
 
     /**
      * JSON 직렬화를 위한 RedisTemplate
@@ -37,8 +44,16 @@ public class RedisConfig {
         template.setKeySerializer(stringSerializer);
         template.setHashKeySerializer(stringSerializer);
 
+
+        // ObjectMapper 설정
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        GenericJackson2JsonRedisSerializer jsonSerializer =
+                new GenericJackson2JsonRedisSerializer(objectMapper);
+
         // Value Serializer: JSON
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer();
+
         template.setValueSerializer(jsonSerializer);
         template.setHashValueSerializer(jsonSerializer);
 

@@ -5,6 +5,8 @@ import com.wan.framework.permission.constant.PermissionExceptionMessage;
 import com.wan.framework.permission.domain.ApiRegistry;
 import com.wan.framework.permission.domain.Role;
 import com.wan.framework.permission.domain.RoleApiPermission;
+import com.wan.framework.permission.dto.ApiRegistryDTO;
+import com.wan.framework.permission.dto.RoleApiPermissionDTO;
 import com.wan.framework.permission.dto.RoleDTO;
 import com.wan.framework.permission.exception.PermissionException;
 import com.wan.framework.permission.repository.ApiRegistryRepository;
@@ -173,15 +175,19 @@ public class PermissionService {
     /**
      * 활성 API 목록 조회
      */
-    public List<ApiRegistry> getActiveApis() {
-        return apiRegistryRepository.findByStatus(ApiStatus.ACTIVE);
+    public List<ApiRegistryDTO> getActiveApis() {
+        return apiRegistryRepository.findByStatus(ApiStatus.ACTIVE).stream()
+                .map(this::toApiRegistryDTO)
+                .toList();
     }
 
     /**
      * Role별 권한 목록 조회
      */
-    public List<RoleApiPermission> getRolePermissions(Long roleId) {
-        return roleApiPermissionRepository.findAllowedPermissionsByRoleId(roleId);
+    public List<RoleApiPermissionDTO> getRolePermissions(Long roleId) {
+        return roleApiPermissionRepository.findAllowedPermissionsByRoleId(roleId).stream()
+                .map(this::toRoleApiPermissionDTO)
+                .toList();
     }
 
     // Helper Methods
@@ -193,6 +199,35 @@ public class PermissionService {
                 .description(role.getDescription())
                 .createdAt(role.getCreatedAt())
                 .updatedAt(role.getUpdatedAt())
+                .build();
+    }
+
+    private ApiRegistryDTO toApiRegistryDTO(ApiRegistry apiRegistry) {
+        return ApiRegistryDTO.builder()
+                .apiId(apiRegistry.getApiId())
+                .serviceId(apiRegistry.getServiceId())
+                .httpMethod(apiRegistry.getHttpMethod())
+                .uriPattern(apiRegistry.getUriPattern())
+                .controllerName(apiRegistry.getControllerName())
+                .handlerMethod(apiRegistry.getHandlerMethod())
+                .description(apiRegistry.getDescription())
+                .authRequired(apiRegistry.getAuthRequired())
+                .status(apiRegistry.getStatus())
+                .createdAt(apiRegistry.getCreatedAt())
+                .updatedAt(apiRegistry.getUpdatedAt())
+                .build();
+    }
+
+    private RoleApiPermissionDTO toRoleApiPermissionDTO(RoleApiPermission permission) {
+        return RoleApiPermissionDTO.builder()
+                .permissionId(permission.getPermissionId())
+                .roleId(permission.getRole().getRoleId())
+                .roleCode(permission.getRole().getRoleCode())
+                .apiId(permission.getApiRegistry().getApiId())
+                .httpMethod(permission.getApiRegistry().getHttpMethod())
+                .uriPattern(permission.getApiRegistry().getUriPattern())
+                .allowed(permission.getAllowed())
+                .createdAt(permission.getCreatedAt())
                 .build();
     }
 }
