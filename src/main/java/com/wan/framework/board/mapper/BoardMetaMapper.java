@@ -9,12 +9,17 @@ public interface BoardMetaMapper {
 
     BoardMetaDTO toDTO(BoardMeta boardMeta);
 
+    @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @BeanMapping(builder = @Builder(disableBuilder = true))
     BoardMeta toEntity(BoardMetaDTO boardMetaDTO);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateEntityFromDto(BoardMetaDTO boardMetaDTO, @MappingTarget BoardMeta entity);
 

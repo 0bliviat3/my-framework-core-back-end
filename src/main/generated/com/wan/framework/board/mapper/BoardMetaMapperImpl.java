@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-01-15T18:20:50+0900",
+    date = "2026-01-16T16:07:41+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.15 (OpenLogic)"
 )
 @Component
@@ -40,19 +40,18 @@ public class BoardMetaMapperImpl implements BoardMetaMapper {
             return null;
         }
 
-        BoardMeta.BoardMetaBuilder boardMeta = BoardMeta.builder();
+        BoardMeta boardMeta = new BoardMeta();
 
-        boardMeta.id( boardMetaDTO.getId() );
-        boardMeta.title( boardMetaDTO.getTitle() );
-        boardMeta.description( boardMetaDTO.getDescription() );
-        boardMeta.formDefinitionJson( boardMetaDTO.getFormDefinitionJson() );
-        boardMeta.roles( boardMetaDTO.getRoles() );
-        boardMeta.useComment( boardMetaDTO.getUseComment() );
-        boardMeta.createdBy( boardMetaDTO.getCreatedBy() );
-        boardMeta.dataStateCode( boardMetaDTO.getDataStateCode() );
-        boardMeta.ableState( boardMetaDTO.getAbleState() );
+        boardMeta.setId( boardMetaDTO.getId() );
+        boardMeta.setTitle( boardMetaDTO.getTitle() );
+        boardMeta.setDescription( boardMetaDTO.getDescription() );
+        boardMeta.setFormDefinitionJson( boardMetaDTO.getFormDefinitionJson() );
+        boardMeta.setRoles( boardMetaDTO.getRoles() );
+        boardMeta.setUseComment( boardMetaDTO.getUseComment() );
+        boardMeta.setDataStateCode( boardMetaDTO.getDataStateCode() );
+        boardMeta.setAbleState( boardMetaDTO.getAbleState() );
 
-        return boardMeta.build();
+        return boardMeta;
     }
 
     @Override
@@ -78,9 +77,6 @@ public class BoardMetaMapperImpl implements BoardMetaMapper {
         }
         if ( boardMetaDTO.getUseComment() != null ) {
             entity.setUseComment( boardMetaDTO.getUseComment() );
-        }
-        if ( boardMetaDTO.getCreatedBy() != null ) {
-            entity.setCreatedBy( boardMetaDTO.getCreatedBy() );
         }
         if ( boardMetaDTO.getDataStateCode() != null ) {
             entity.setDataStateCode( boardMetaDTO.getDataStateCode() );

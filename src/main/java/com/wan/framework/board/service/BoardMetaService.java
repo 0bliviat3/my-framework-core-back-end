@@ -79,7 +79,6 @@ public class BoardMetaService {
                 .formDefinitionJson(original.getFormDefinitionJson())
                 .roles(original.getRoles())
                 .useComment(original.getUseComment())
-                .createdBy(original.getCreatedBy())
                 .ableState(original.getAbleState())
                 .build();
 

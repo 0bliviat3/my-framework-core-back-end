@@ -2,6 +2,7 @@ package com.wan.framework.board.domain;
 
 import com.wan.framework.base.constant.AbleState;
 import com.wan.framework.base.constant.DataStateCode;
+import com.wan.framework.base.domain.BaseAuditEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -14,10 +15,11 @@ import static com.wan.framework.base.constant.DataStateCode.I;
 @Table(name = "t_board_meta")
 @Getter
 @Setter
+@EqualsAndHashCode(callSuper = false)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BoardMeta {
+public class BoardMeta extends BaseAuditEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,8 +40,6 @@ public class BoardMeta {
 
     private Boolean useComment; // 댓글 사용 여부
 
-    private String createdBy; // 생성자 ID
-
     @Column(name = "data_code", nullable = false)
     @Enumerated(EnumType.STRING)
     private DataStateCode dataStateCode;
@@ -48,19 +48,14 @@ public class BoardMeta {
     @Enumerated(EnumType.STRING)
     private AbleState ableState;
 
-    private LocalDateTime createdAt;
-
-    private LocalDateTime updatedAt;
-
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
         this.ableState = ABLE;
         this.dataStateCode = I;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        // BaseAuditEntity에서 updatedAt 처리
     }
 }

@@ -1,5 +1,6 @@
 package com.wan.framework.apikey.domain;
 
+import com.wan.framework.base.domain.BaseAuditEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -11,10 +12,11 @@ import java.time.LocalDateTime;
 })
 @Getter
 @Setter
+@EqualsAndHashCode(callSuper = false)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ApiKeyPermission {
+public class ApiKeyPermission extends BaseAuditEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,15 +28,4 @@ public class ApiKeyPermission {
 
     @Column(nullable = false, length = 100)
     private String permission; // 권한 문자열 (예: "board:read", "user:write")
-
-    @Column(name = "created_by", length = 100)
-    private String createdBy; // 생성자 ID
-
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
 }

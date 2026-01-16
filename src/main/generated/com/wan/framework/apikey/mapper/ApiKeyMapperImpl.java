@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-01-15T18:20:50+0900",
+    date = "2026-01-16T16:07:41+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.15 (OpenLogic)"
 )
 @Component
@@ -44,17 +44,15 @@ public class ApiKeyMapperImpl implements ApiKeyMapper {
             return null;
         }
 
-        ApiKey.ApiKeyBuilder apiKey = ApiKey.builder();
+        ApiKey apiKey = new ApiKey();
 
-        apiKey.id( dto.getId() );
-        apiKey.apiKeyPrefix( dto.getApiKeyPrefix() );
-        apiKey.description( dto.getDescription() );
-        apiKey.createdBy( dto.getCreatedBy() );
-        apiKey.updatedBy( dto.getUpdatedBy() );
-        apiKey.ableState( dto.getAbleState() );
-        apiKey.expiredAt( dto.getExpiredAt() );
+        apiKey.setId( dto.getId() );
+        apiKey.setApiKeyPrefix( dto.getApiKeyPrefix() );
+        apiKey.setDescription( dto.getDescription() );
+        apiKey.setAbleState( dto.getAbleState() );
+        apiKey.setExpiredAt( dto.getExpiredAt() );
 
-        return apiKey.build();
+        return apiKey;
     }
 
     @Override
@@ -65,9 +63,6 @@ public class ApiKeyMapperImpl implements ApiKeyMapper {
 
         if ( dto.getDescription() != null ) {
             entity.setDescription( dto.getDescription() );
-        }
-        if ( dto.getUpdatedBy() != null ) {
-            entity.setUpdatedBy( dto.getUpdatedBy() );
         }
         if ( dto.getAbleState() != null ) {
             entity.setAbleState( dto.getAbleState() );

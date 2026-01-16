@@ -1,10 +1,12 @@
 package com.wan.framework.batch.domain;
 
 import com.wan.framework.base.constant.DataStateCode;
+import com.wan.framework.base.domain.BaseAuditEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -20,10 +22,11 @@ import java.time.LocalDateTime;
         @Index(name = "idx_enabled", columnList = "enabled")
 })
 @Data
+@EqualsAndHashCode(callSuper = false)
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BatchJob {
+public class BatchJob extends BaseAuditEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -136,32 +139,10 @@ public class BatchJob {
     @Builder.Default
     private DataStateCode dataState = DataStateCode.I;
 
-    /**
-     * 생성자
-     */
-    @Column(nullable = false, length = 50)
-    private String createdBy;
-
-    /**
-     * 생성일시
-     */
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
-
-    /**
-     * 수정자
-     */
-    @Column(length = 50)
-    private String updatedBy;
-
-    /**
-     * 수정일시
-     */
-    private LocalDateTime updatedAt;
+    // createdBy, createdAt, updatedBy, updatedAt은 BaseAuditEntity에서 상속받아 자동 처리됨
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
         if (this.dataState == null) {
             this.dataState = DataStateCode.I;
         }
@@ -169,7 +150,6 @@ public class BatchJob {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
         if (this.dataState == DataStateCode.I) {
             this.dataState = DataStateCode.U;
         }

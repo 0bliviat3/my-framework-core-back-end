@@ -1,10 +1,12 @@
 package com.wan.framework.proxy.domain;
 
 import com.wan.framework.base.constant.DataStateCode;
+import com.wan.framework.base.domain.BaseAuditEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -17,10 +19,11 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "t_api_endpoint")
 @Data
+@EqualsAndHashCode(callSuper = false)
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ApiEndpoint {
+public class ApiEndpoint extends BaseAuditEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -113,32 +116,8 @@ public class ApiEndpoint {
     @Builder.Default
     private DataStateCode dataState = DataStateCode.I;
 
-    /**
-     * 생성자
-     */
-    @Column(nullable = false, length = 50)
-    private String createdBy;
-
-    /**
-     * 생성일시
-     */
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
-
-    /**
-     * 수정자
-     */
-    @Column(length = 50)
-    private String updatedBy;
-
-    /**
-     * 수정일시
-     */
-    private LocalDateTime updatedAt;
-
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
         if (this.dataState == null) {
             this.dataState = DataStateCode.I;
         }
@@ -146,7 +125,6 @@ public class ApiEndpoint {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
         if (this.dataState == DataStateCode.I) {
             this.dataState = DataStateCode.U;
         }

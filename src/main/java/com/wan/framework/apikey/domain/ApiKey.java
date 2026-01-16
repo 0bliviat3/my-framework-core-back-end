@@ -2,6 +2,7 @@ package com.wan.framework.apikey.domain;
 
 import com.wan.framework.base.constant.AbleState;
 import com.wan.framework.base.constant.DataStateCode;
+import com.wan.framework.base.domain.BaseAuditEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,10 +17,11 @@ import static com.wan.framework.base.constant.AbleState.ABLE;
 })
 @Getter
 @Setter
+@EqualsAndHashCode(callSuper = false)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ApiKey {
+public class ApiKey extends BaseAuditEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,12 +35,6 @@ public class ApiKey {
 
     @Column(length = 500)
     private String description; // API Key 설명
-
-    @Column(name = "created_by", nullable = false, length = 100)
-    private String createdBy; // 생성자 ID
-
-    @Column(name = "updated_by", length = 100)
-    private String updatedBy; // 수정자 ID
 
     @Column(name = "able_state", nullable = false)
     @Enumerated(EnumType.STRING)
@@ -59,18 +55,11 @@ public class ApiKey {
     @Enumerated(EnumType.STRING)
     private DataStateCode dataStateCode;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
         this.dataStateCode = DataStateCode.I;
         if (this.ableState == null) {
             this.ableState = ABLE;
@@ -79,7 +68,7 @@ public class ApiKey {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        // BaseAuditEntity에서 updatedAt 처리
     }
 
     // 사용 횟수 증가

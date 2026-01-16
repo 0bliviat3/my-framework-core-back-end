@@ -11,12 +11,15 @@ public interface ApiKeyMapper {
     @Mapping(target = "permissions", ignore = true)
     ApiKeyDTO toDto(ApiKey entity);
 
+    @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "lastUsedAt", ignore = true)
     @Mapping(target = "usageCount", ignore = true)
     @Mapping(target = "dataStateCode", ignore = true)
+    @BeanMapping(builder = @Builder(disableBuilder = true))
     ApiKey toEntity(ApiKeyDTO dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -25,6 +28,7 @@ public interface ApiKeyMapper {
     @Mapping(target = "apiKeyPrefix", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "lastUsedAt", ignore = true)

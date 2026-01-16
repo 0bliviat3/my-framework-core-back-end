@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-01-15T18:20:50+0900",
+    date = "2026-01-16T16:07:41+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.15 (OpenLogic)"
 )
 @Component
@@ -65,10 +65,6 @@ public class ApiEndpointMapperImpl implements ApiEndpointMapper {
         apiEndpoint.isInternal( dto.getIsInternal() );
         apiEndpoint.isEnabled( dto.getIsEnabled() );
         apiEndpoint.dataState( dto.getDataState() );
-        apiEndpoint.createdBy( dto.getCreatedBy() );
-        apiEndpoint.createdAt( dto.getCreatedAt() );
-        apiEndpoint.updatedBy( dto.getUpdatedBy() );
-        apiEndpoint.updatedAt( dto.getUpdatedAt() );
 
         return apiEndpoint.build();
     }
@@ -79,6 +75,18 @@ public class ApiEndpointMapperImpl implements ApiEndpointMapper {
             return;
         }
 
+        if ( dto.getCreatedBy() != null ) {
+            entity.setCreatedBy( dto.getCreatedBy() );
+        }
+        if ( dto.getCreatedAt() != null ) {
+            entity.setCreatedAt( dto.getCreatedAt() );
+        }
+        if ( dto.getUpdatedBy() != null ) {
+            entity.setUpdatedBy( dto.getUpdatedBy() );
+        }
+        if ( dto.getUpdatedAt() != null ) {
+            entity.setUpdatedAt( dto.getUpdatedAt() );
+        }
         if ( dto.getId() != null ) {
             entity.setId( dto.getId() );
         }
@@ -120,18 +128,6 @@ public class ApiEndpointMapperImpl implements ApiEndpointMapper {
         }
         if ( dto.getDataState() != null ) {
             entity.setDataState( dto.getDataState() );
-        }
-        if ( dto.getCreatedBy() != null ) {
-            entity.setCreatedBy( dto.getCreatedBy() );
-        }
-        if ( dto.getCreatedAt() != null ) {
-            entity.setCreatedAt( dto.getCreatedAt() );
-        }
-        if ( dto.getUpdatedBy() != null ) {
-            entity.setUpdatedBy( dto.getUpdatedBy() );
-        }
-        if ( dto.getUpdatedAt() != null ) {
-            entity.setUpdatedAt( dto.getUpdatedAt() );
         }
     }
 }

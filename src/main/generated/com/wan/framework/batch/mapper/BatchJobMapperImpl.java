@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-01-15T18:20:50+0900",
+    date = "2026-01-16T16:07:41+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.15 (OpenLogic)"
 )
 @Component
@@ -71,10 +71,6 @@ public class BatchJobMapperImpl implements BatchJobMapper {
         batchJob.lastExecutionStatus( dto.getLastExecutionStatus() );
         batchJob.nextExecutionAt( dto.getNextExecutionAt() );
         batchJob.dataState( dto.getDataState() );
-        batchJob.createdBy( dto.getCreatedBy() );
-        batchJob.createdAt( dto.getCreatedAt() );
-        batchJob.updatedBy( dto.getUpdatedBy() );
-        batchJob.updatedAt( dto.getUpdatedAt() );
 
         return batchJob.build();
     }
@@ -85,6 +81,18 @@ public class BatchJobMapperImpl implements BatchJobMapper {
             return;
         }
 
+        if ( dto.getCreatedBy() != null ) {
+            entity.setCreatedBy( dto.getCreatedBy() );
+        }
+        if ( dto.getCreatedAt() != null ) {
+            entity.setCreatedAt( dto.getCreatedAt() );
+        }
+        if ( dto.getUpdatedBy() != null ) {
+            entity.setUpdatedBy( dto.getUpdatedBy() );
+        }
+        if ( dto.getUpdatedAt() != null ) {
+            entity.setUpdatedAt( dto.getUpdatedAt() );
+        }
         if ( dto.getId() != null ) {
             entity.setId( dto.getId() );
         }
@@ -135,18 +143,6 @@ public class BatchJobMapperImpl implements BatchJobMapper {
         }
         if ( dto.getDataState() != null ) {
             entity.setDataState( dto.getDataState() );
-        }
-        if ( dto.getCreatedBy() != null ) {
-            entity.setCreatedBy( dto.getCreatedBy() );
-        }
-        if ( dto.getCreatedAt() != null ) {
-            entity.setCreatedAt( dto.getCreatedAt() );
-        }
-        if ( dto.getUpdatedBy() != null ) {
-            entity.setUpdatedBy( dto.getUpdatedBy() );
-        }
-        if ( dto.getUpdatedAt() != null ) {
-            entity.setUpdatedAt( dto.getUpdatedAt() );
         }
     }
 }

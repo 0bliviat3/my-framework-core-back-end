@@ -62,7 +62,6 @@ public class ApiKeyService {
                 .expiredAt(expiredAt)
                 .usageCount(0L)
                 .ableState(AbleState.ABLE)
-                .createdBy(createdBy)
                 .build();
 
         ApiKey saved = apiKeyRepository.save(apiKey);
@@ -73,7 +72,6 @@ public class ApiKeyService {
                 ApiKeyPermission perm = ApiKeyPermission.builder()
                         .apiKey(saved)
                         .permission(permission)
-                        .createdBy(createdBy)
                         .build();
                 apiKeyPermissionRepository.save(perm);
             });
@@ -220,7 +218,6 @@ public class ApiKeyService {
         ApiKeyPermission perm = ApiKeyPermission.builder()
                 .apiKey(apiKey)
                 .permission(permission)
-                .createdBy(createdBy)
                 .build();
 
         apiKeyPermissionRepository.save(perm);
