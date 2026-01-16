@@ -1,5 +1,7 @@
 package com.wan.framework.session.web;
 
+import com.wan.framework.permission.repository.RoleRepository;
+import com.wan.framework.permission.service.PermissionCacheService;
 import com.wan.framework.session.dto.LoginRequest;
 import com.wan.framework.session.dto.SessionDTO;
 import com.wan.framework.session.service.SessionService;
@@ -29,6 +31,8 @@ public class SessionController {
 
     private final SessionService sessionService;
     private final SignService signService;
+    private final PermissionCacheService permissionCacheService;
+    private final RoleRepository roleRepository;
 
     /**
      * 로그인 (세션 생성)
@@ -46,13 +50,23 @@ public class SessionController {
                 .build();
         UserDTO user = signService.signIn(loginUser);
 
+        // User의 모든 Role에 대해 권한 캐시 생성
+        if (user.getRoleCodes() != null && !user.getRoleCodes().isEmpty()) {
+            for (String roleCode : user.getRoleCodes()) {
+                // RoleRepository로 Role 조회
+                roleRepository.findByRoleCode(roleCode).ifPresent(role ->
+                    permissionCacheService.cacheRolePermissions(role.getRoleId(), role.getRoleCode())
+                );
+            }
+        }
+
         // 세션 생성 (실제 사용자 역할 사용)
         SessionDTO session = sessionService.createSession(
                 httpRequest,
                 httpResponse,
                 user.getUserId(),
                 user.getName(),
-                user.getRoleNames()  // 사용자의 실제 역할 사용
+                user.getRoleNames()  // Role Entity 기반 role codes
         );
 
         return ResponseEntity.ok(session);

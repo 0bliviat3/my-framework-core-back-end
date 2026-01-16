@@ -1,8 +1,12 @@
 package com.wan.framework.user.service;
 
+import com.wan.framework.permission.domain.Role;
+import com.wan.framework.permission.repository.RoleRepository;
 import com.wan.framework.user.constant.RoleType;
+import com.wan.framework.user.domain.User;
 import com.wan.framework.user.dto.UserDTO;
 import com.wan.framework.user.exception.UserException;
+import com.wan.framework.user.repositroy.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -22,6 +26,10 @@ public class SignService {
     private final UserService userService;
 
     private final PasswordService passwordService;
+
+    private final RoleRepository roleRepository;
+
+    private final UserRepository userRepository;
 
     // ---------- User existence helper ----------
 
@@ -53,16 +61,20 @@ public class SignService {
         String saltBase64 = passwordService.generateSaltBase64();
         String hashed = passwordService.hashPassword(userDTO.getPassword(), saltBase64);
 
-        // 3. ROLE_USER 권한 부여
-        UserDTO toSave = UserDTO.builder()
+        // 3. ROLE_USER 조회
+        Role userRole = roleRepository.findByRoleCode("ROLE_USER")
+                .orElseThrow(() -> new RuntimeException("ROLE_USER not found in database"));
+
+        // 4. User 엔티티 생성
+        User user = User.builder()
                 .userId(userDTO.getUserId())
                 .password(hashed)
                 .name(userDTO.getName())
                 .passwordSalt(saltBase64)
-                .roles(Set.of(RoleType.ROLE_USER))  // 일반 사용자 권한
+                .roleEntities(Set.of(userRole))  // Role Entity 할당
                 .build();
 
-        userService.saveUser(toSave);
+        userRepository.save(user);
         log.info("일반 사용자 회원가입 완료: {}", userDTO.getUserId());
     }
 
@@ -182,16 +194,22 @@ public class SignService {
         String saltBase64 = passwordService.generateSaltBase64();
         String hashed = passwordService.hashPassword(userDTO.getPassword(), saltBase64);
 
-        // 4. ROLE_ADMIN 권한 부여
-        UserDTO toSave = UserDTO.builder()
+        // 4. ROLE_ADMIN, ROLE_USER 조회
+        Role adminRole = roleRepository.findByRoleCode("ROLE_ADMIN")
+                .orElseThrow(() -> new RuntimeException("ROLE_ADMIN not found in database"));
+        Role userRole = roleRepository.findByRoleCode("ROLE_USER")
+                .orElseThrow(() -> new RuntimeException("ROLE_USER not found in database"));
+
+        // 5. User 생성
+        User user = User.builder()
                 .userId(userDTO.getUserId())
                 .password(hashed)
                 .name(userDTO.getName())
                 .passwordSalt(saltBase64)
-                .roles(Set.of(RoleType.ROLE_ADMIN, RoleType.ROLE_USER))  // 관리자 + 일반 사용자 권한
+                .roleEntities(Set.of(adminRole, userRole))  // Role Entity 할당
                 .build();
 
-        userService.saveUser(toSave);
+        userRepository.save(user);
         log.info("초기 관리자 계정 생성 완료: {}", userDTO.getUserId());
     }
 

@@ -23,7 +23,8 @@
       "Bash(findstr:*)",
       "Bash(./gradlew test:*)",
       "Bash(./gradlew.bat clean test:*)",
-      "Bash(./gradlew.bat clean build:*)"
+      "Bash(./gradlew.bat clean build:*)",
+      "Bash(./gradlew build:*)"
     ]
   }
 }

@@ -2,12 +2,16 @@ package com.wan.framework.menu.domain;
 
 import com.wan.framework.base.constant.AbleState;
 import com.wan.framework.base.constant.DataStateCode;
+import com.wan.framework.permission.domain.Role;
 import com.wan.framework.program.domain.Program;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.wan.framework.base.constant.AbleState.ABLE;
 import static com.wan.framework.base.constant.DataStateCode.I;
@@ -41,8 +45,14 @@ public class Menu {
     @Column(name = "type", nullable = false)
     private String type;
 
-    @Column(name = "roles", nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'guest'")
-    private String roles;
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(
+        name = "t_menu_role_mapping",
+        joinColumns = @JoinColumn(name = "menu_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>();
 
     @Column(name = "icon")
     private String icon;
@@ -71,5 +81,31 @@ public class Menu {
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    // === Role Entity 기반 헬퍼 메서드 ===
+
+    /**
+     * Role Code 목록 조회
+     * 메서드명을 extractRoleCodes로 변경하여 MapStruct가 JavaBean property로 인식하지 않도록 함
+     */
+    public Set<String> extractRoleCodes() {
+        if (this.roles == null || this.roles.isEmpty()) {
+            return Set.of();
+        }
+        return roles.stream()
+                .map(Role::getRoleCode)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * 특정 Role 보유 여부 확인
+     */
+    public boolean hasRole(String roleCode) {
+        if (this.roles == null) {
+            return false;
+        }
+        return roles.stream()
+                .anyMatch(role -> role.getRoleCode().equals(roleCode));
     }
 }

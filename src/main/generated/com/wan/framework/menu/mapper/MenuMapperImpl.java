@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-01-07T13:23:51+0900",
+    date = "2026-01-15T18:20:50+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.15 (OpenLogic)"
 )
 @Component
@@ -30,10 +30,11 @@ public class MenuMapperImpl implements MenuMapper {
         menuDTO.id( menu.getId() );
         menuDTO.name( menu.getName() );
         menuDTO.type( menu.getType() );
-        menuDTO.roles( menu.getRoles() );
         menuDTO.icon( menu.getIcon() );
         menuDTO.dataStateCode( menu.getDataStateCode() );
         menuDTO.ableState( menu.getAbleState() );
+
+        menuDTO.roleCodes( menu.extractRoleCodes().stream().toList() );
 
         return menuDTO.build();
     }
@@ -49,7 +50,6 @@ public class MenuMapperImpl implements MenuMapper {
         menu.id( menuDTO.getId() );
         menu.name( menuDTO.getName() );
         menu.type( menuDTO.getType() );
-        menu.roles( menuDTO.getRoles() );
         menu.icon( menuDTO.getIcon() );
         menu.dataStateCode( menuDTO.getDataStateCode() );
         menu.ableState( menuDTO.getAbleState() );
@@ -71,9 +71,6 @@ public class MenuMapperImpl implements MenuMapper {
         }
         if ( menuDTO.getType() != null ) {
             entity.setType( menuDTO.getType() );
-        }
-        if ( menuDTO.getRoles() != null ) {
-            entity.setRoles( menuDTO.getRoles() );
         }
         if ( menuDTO.getIcon() != null ) {
             entity.setIcon( menuDTO.getIcon() );

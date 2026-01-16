@@ -20,6 +20,7 @@ public class UserDTO {
     private DataStateCode dataCode;
     private String passwordSalt;
     private Set<RoleType> roles;
+    private List<String> roleCodes;  // 신규 Role Entity를 문자열 리스트로 노출
     private LocalDateTime createTime;
     private LocalDateTime modifiedTime;
 
@@ -33,14 +34,21 @@ public class UserDTO {
     }
 
     /**
-     * 역할을 문자열 리스트로 반환
+     * 역할을 문자열 리스트로 반환 (신규 Role Entity 기반)
      */
     public List<String> getRoleNames() {
-        if (roles == null || roles.isEmpty()) {
-            return List.of("ROLE_USER");
+        // 신규 roleCodes 우선 사용
+        if (roleCodes != null && !roleCodes.isEmpty()) {
+            return roleCodes;
         }
-        return roles.stream()
-                .map(RoleType::name)
-                .toList();
+
+        // 레거시 RoleType Enum 폴백
+        if (roles != null && !roles.isEmpty()) {
+            return roles.stream()
+                    .map(RoleType::name)
+                    .toList();
+        }
+
+        return List.of("ROLE_USER");
     }
 }

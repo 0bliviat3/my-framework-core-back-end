@@ -30,7 +30,7 @@ public class Program {
     @Column(name = "front_path", length = 255)
     private String frontPath;
 
-    @Column(name = "program_path", nullable = false, length = 255)
+    @Column(name = "program_path", nullable = true, length = 255)
     private String path;
 
     @Column(name = "api_key")

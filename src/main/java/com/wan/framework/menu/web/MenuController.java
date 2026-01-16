@@ -6,11 +6,13 @@ import com.wan.framework.menu.service.MenuService;
 import com.wan.framework.session.constant.SessionConstants;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/menus")
 @RequiredArgsConstructor
@@ -23,7 +25,9 @@ public class MenuController {
      */
     @PostMapping
     public ResponseEntity<MenuDTO> createMenu(@RequestBody MenuDTO request) {
+        log.info("Create menu request: name={}, roleCodes={}", request.getName(), request.getRoleCodes());
         MenuDTO created = menuService.createMenu(request);
+        log.info("Menu created: id={}, roleCodes={}", created.getId(), created.getRoleCodes());
         return ResponseEntity.ok(created);
     }
 
@@ -68,7 +72,9 @@ public class MenuController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<MenuDTO> updateMenu(@PathVariable Long id, @RequestBody MenuDTO request) {
+        log.info("Update menu request: id={}, name={}, roleCodes={}", id, request.getName(), request.getRoleCodes());
         MenuDTO updated = menuService.updateMenu(id, request);
+        log.info("Menu updated: id={}, roleCodes={}", updated.getId(), updated.getRoleCodes());
         return ResponseEntity.ok(updated);
     }
 

@@ -4,6 +4,8 @@ import com.wan.framework.base.constant.AbleState;
 import com.wan.framework.base.constant.DataStateCode;
 import lombok.*;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,7 +17,7 @@ public class MenuDTO {
     private String name;
     private String programName;
     private String type;
-    private String roles;
+    private List<String> roleCodes;  // 변경: String roles → List<String> roleCodes
     private String icon;
     private String path;
     private String frontPath;
