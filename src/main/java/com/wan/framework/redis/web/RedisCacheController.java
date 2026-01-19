@@ -74,6 +74,15 @@ public class RedisCacheController {
     }
 
     /**
+     * 캐시 키 타입 조회
+     */
+    @GetMapping("/{key}/type")
+    public ResponseEntity<String> getCacheType(@PathVariable String key) {
+        String type = cacheService.getKeyType(key);
+        return ResponseEntity.ok(type);
+    }
+
+    /**
      * 캐시 TTL 설정
      */
     @PutMapping("/{key}/ttl")

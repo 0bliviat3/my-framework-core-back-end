@@ -16,6 +16,7 @@ public enum RedisExceptionMessage {
     CACHE_GET_FAILED("REDIS_010", "캐시 조회에 실패했습니다."),
     CACHE_SET_FAILED("REDIS_011", "캐시 저장에 실패했습니다."),
     CACHE_DELETE_FAILED("REDIS_012", "캐시 삭제에 실패했습니다."),
+    CACHE_WRONG_TYPE("REDIS_013", "키 '%s'는 %s 타입입니다. String 타입으로 조회할 수 없습니다."),
 
     // 연결
     CONNECTION_FAILED("REDIS_020", "Redis 연결에 실패했습니다."),

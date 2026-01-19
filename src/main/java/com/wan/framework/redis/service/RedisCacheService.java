@@ -77,6 +77,13 @@ public class RedisCacheService {
             log.debug("Cache get: key={}, found={}", key, value != null);
             return value;
         } catch (Exception e) {
+            // WRONGTYPE 에러 상세 정보 제공
+            if (e.getMessage() != null && e.getMessage().contains("WRONGTYPE")) {
+                String keyType = getKeyType(key);
+                log.error("Failed to get cache: key={}, keyType={}", key, keyType, e);
+                throw new RedisException(CACHE_WRONG_TYPE, e, key, keyType);
+            }
+
             log.error("Failed to get cache: key={}", key, e);
             throw new RedisException(CACHE_GET_FAILED, e);
         }
@@ -206,6 +213,22 @@ public class RedisCacheService {
      */
     public Set<String> keys(String pattern) {
         return redisTemplate.keys(pattern);
+    }
+
+    /**
+     * 키 타입 조회
+     *
+     * @param key 키
+     * @return 키 타입 (string, hash, set, list, zset, none)
+     */
+    public String getKeyType(String key) {
+        try {
+            var type = redisTemplate.type(key);
+            return type != null ? type.code() : "none";
+        } catch (Exception e) {
+            log.error("Failed to get key type: key={}", key, e);
+            return "unknown";
+        }
     }
 
     // ==================== Hash Operations ====================
