@@ -11,6 +11,7 @@ import com.wan.framework.board.repository.BoardMetaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,19 +53,23 @@ public class BoardDataService {
 
         BoardDataDTO dto = mapper.toDto(entity);
 
-        // 이전글/다음글 조회
+        // 이전글/다음글 조회 (1개씩만)
         List<BoardDataStatus> visibleStatuses = Arrays.asList(PUBLISHED, BoardDataStatus.PINNED);
-        repository.findPrevious(entity.getBoardMeta().getId(), id, visibleStatuses, D)
-                .ifPresent(prev -> {
-                    dto.setPrevId(prev.getId());
-                    dto.setPrevTitle(prev.getTitle());
-                });
+        Pageable limitOne = PageRequest.of(0, 1);
 
-        repository.findNext(entity.getBoardMeta().getId(), id, visibleStatuses, D)
-                .ifPresent(next -> {
-                    dto.setNextId(next.getId());
-                    dto.setNextTitle(next.getTitle());
-                });
+        List<BoardData> prevList = repository.findPrevious(entity.getBoardMeta().getId(), id, visibleStatuses, D, limitOne);
+        if (!prevList.isEmpty()) {
+            BoardData prev = prevList.get(0);
+            dto.setPrevId(prev.getId());
+            dto.setPrevTitle(prev.getTitle());
+        }
+
+        List<BoardData> nextList = repository.findNext(entity.getBoardMeta().getId(), id, visibleStatuses, D, limitOne);
+        if (!nextList.isEmpty()) {
+            BoardData next = nextList.get(0);
+            dto.setNextId(next.getId());
+            dto.setNextTitle(next.getTitle());
+        }
 
         return dto;
     }

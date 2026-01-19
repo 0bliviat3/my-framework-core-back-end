@@ -4,6 +4,7 @@ import com.wan.framework.base.constant.DataStateCode;
 import com.wan.framework.board.constant.BoardDataStatus;
 import com.wan.framework.board.domain.BoardData;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -40,25 +41,27 @@ public interface BoardDataRepository extends JpaRepository<BoardData, Long> {
     Page<BoardData> findByBoardMetaIdAndAuthorIdAndStatusInAndDataStateCodeNotOrderByCreatedAtDesc(
         Long boardMetaId, String authorId, List<BoardDataStatus> statuses, DataStateCode dataStateCode, Pageable pageable);
 
-    // 이전글 조회
+    // 이전글 조회 (가장 최근 1개만)
     @EntityGraph(attributePaths = {"boardMeta"})
     @Query("SELECT bd FROM BoardData bd WHERE bd.boardMeta.id = :boardMetaId " +
            "AND bd.id < :currentId AND bd.status IN :statuses AND bd.dataStateCode <> :deletedCode " +
            "ORDER BY bd.id DESC")
-    Optional<BoardData> findPrevious(@Param("boardMetaId") Long boardMetaId,
-                                     @Param("currentId") Long currentId,
-                                     @Param("statuses") List<BoardDataStatus> statuses,
-                                     @Param("deletedCode") DataStateCode deletedCode);
+    List<BoardData> findPrevious(@Param("boardMetaId") Long boardMetaId,
+                                  @Param("currentId") Long currentId,
+                                  @Param("statuses") List<BoardDataStatus> statuses,
+                                  @Param("deletedCode") DataStateCode deletedCode,
+                                  Pageable pageable);
 
-    // 다음글 조회
+    // 다음글 조회 (가장 가까운 1개만)
     @EntityGraph(attributePaths = {"boardMeta"})
     @Query("SELECT bd FROM BoardData bd WHERE bd.boardMeta.id = :boardMetaId " +
            "AND bd.id > :currentId AND bd.status IN :statuses AND bd.dataStateCode <> :deletedCode " +
            "ORDER BY bd.id ASC")
-    Optional<BoardData> findNext(@Param("boardMetaId") Long boardMetaId,
-                                 @Param("currentId") Long currentId,
-                                 @Param("statuses") List<BoardDataStatus> statuses,
-                                 @Param("deletedCode") DataStateCode deletedCode);
+    List<BoardData> findNext(@Param("boardMetaId") Long boardMetaId,
+                              @Param("currentId") Long currentId,
+                              @Param("statuses") List<BoardDataStatus> statuses,
+                              @Param("deletedCode") DataStateCode deletedCode,
+                              Pageable pageable);
 
     // 특정 사용자의 게시글 수
     long countByAuthorIdAndDataStateCodeNot(String authorId, DataStateCode dataStateCode);
