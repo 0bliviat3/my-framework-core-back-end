@@ -159,9 +159,36 @@
 
 ---
 
+### 🔄 **필터 및 인터셉터**
+
+#### 9. [필터 및 인터셉터 아키텍처](./filters-and-interceptors.md) ⭐⭐⭐⭐
+**대상**: 백엔드 개발자
+**내용**: Filter와 Interceptor 전체 구조
+- ✅ Filter vs Interceptor 차이
+- ✅ SessionValidationFilter 상세
+- ✅ 전체 요청 처리 흐름
+- ✅ 세션 기반 vs API Key 기반 인증
+- ✅ PublicApiConstants 관리
+- ✅ 트러블슈팅 가이드
+
+**크기**: 8.5KB
+
+#### 10. [인터셉터 설정](./interceptors.md) ⭐⭐⭐⭐
+**대상**: 백엔드 개발자
+**내용**: Interceptor 상세 설정
+- ✅ 4개 인터셉터 상세 설명
+- ✅ 실행 순서 및 우선순위
+- ✅ 경로 패턴 관리
+- ✅ 인증 방식 분리 (세션 vs API Key)
+- ✅ 인터셉터 추가 가이드
+
+**크기**: 12KB
+
+---
+
 ### 📝 **코드 리뷰**
 
-#### 9. [코드 리뷰](./code_review.md)
+#### 11. [코드 리뷰](./code_review.md)
 **대상**: 백엔드 개발자
 **내용**: 코드 품질 및 리뷰 가이드
 - ✅ 코드 스타일 가이드

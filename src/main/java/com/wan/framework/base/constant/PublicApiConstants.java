@@ -16,8 +16,10 @@ public class PublicApiConstants {
      * - 관리자 초기 설정
      * - Swagger/Actuator
      * - 에러 페이지
+     * - API Key 인증 경로 (/api/**)
      */
     public static final List<String> PUBLIC_API_PATHS = Arrays.asList(
+            "/api",                    // API Key 인증 사용 (세션 검증 제외)
             "/sessions/login",
             "/sessions/logout",
             "/users/sign-in",
