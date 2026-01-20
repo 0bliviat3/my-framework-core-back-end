@@ -1,23 +1,23 @@
 package com.wan.framework.user.service;
 
-import com.wan.framework.user.constant.RoleType;
 import com.wan.framework.user.domain.User;
 import com.wan.framework.user.dto.UserDTO;
 import com.wan.framework.user.mapper.UserMapper;
 import com.wan.framework.user.repositroy.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static com.wan.framework.base.constant.DataStateCode.D;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -79,14 +79,25 @@ public class UserService {
     /**
      * 관리자 계정 존재 여부 확인
      * - ROLE_ADMIN 권한을 가진 활성 사용자가 있는지 확인
+     * - Role Entity 기반으로 효율적인 단일 쿼리 수행
      *
      * @return 관리자 계정 존재 여부
      */
     public boolean hasAdminAccount() {
-        return userRepository.findAll().stream()
-                .filter(user -> user.getDataCode() != D)  // 삭제되지 않은 사용자만
-                .anyMatch(user -> user.getRoles() != null &&
-                        user.getRoles().contains(RoleType.ROLE_ADMIN));
+        return userRepository.existsByRoleCodeAndNotDeleted("ROLE_ADMIN", D);
+    }
+
+    /**
+     * 관리자 계정 목록 조회
+     * - ROLE_ADMIN 권한을 가진 활성 사용자 목록 반환
+     *
+     * @return 관리자 사용자 DTO 목록
+     */
+    public List<UserDTO> findAdminUsers() {
+        List<User> adminUsers = userRepository.findByRoleCodeAndNotDeleted("ROLE_ADMIN", D);
+        return adminUsers.stream()
+                .map(user -> userMapper.toDto(user).removePass())
+                .toList();
     }
 
 }

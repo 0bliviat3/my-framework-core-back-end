@@ -105,7 +105,7 @@ public class UserController {
     /**
      * 초기 관리자 계정 생성
      * - 관리자 계정이 없을 때만 사용 가능
-     * - ROLE_ADMIN 권한 자동 부여
+     * - ROLE_ADMIN, ROLE_USER 권한 자동 부여
      * - 세션 없이 접근 가능
      */
     @PostMapping("/admin/initial")
@@ -113,6 +113,18 @@ public class UserController {
         log.info("POST /users/admin/initial - userId: {}", userDTO.getUserId());
         signService.createInitialAdmin(userDTO);
         return ResponseEntity.ok("초기 관리자 계정이 생성되었습니다.");
+    }
+
+    /**
+     * 관리자 계정 목록 조회
+     * - ROLE_ADMIN 권한을 가진 모든 활성 사용자 반환
+     * - 관리자만 접근 가능 (인터셉터에서 권한 검증)
+     */
+    @GetMapping("/admin/list")
+    public ResponseEntity<java.util.List<UserDTO>> getAdminList() {
+        log.info("GET /users/admin/list");
+        java.util.List<UserDTO> adminUsers = userService.findAdminUsers();
+        return ResponseEntity.ok(adminUsers);
     }
 
 }

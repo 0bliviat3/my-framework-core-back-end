@@ -173,44 +173,75 @@ public class SignService {
     /**
      * 초기 관리자 계정 생성
      * - 관리자 계정이 없을 때만 생성 가능
-     * - ROLE_ADMIN 권한 자동 부여
+     * - ROLE_ADMIN, ROLE_USER 권한 자동 부여
+     * - 사용자 정보 검증 (userId, password, name 필수)
      *
      * @param userDTO 관리자 정보 (userId, password, name)
-     * @throws UserException 이미 관리자 계정이 존재하거나 ID가 중복된 경우
+     * @throws UserException 이미 관리자 계정이 존재하거나 ID가 중복되거나 입력값이 유효하지 않은 경우
      */
     @Transactional
     public void createInitialAdmin(UserDTO userDTO) {
-        // 1. 관리자 계정이 이미 존재하는지 확인
+        log.info("초기 관리자 계정 생성 요청: {}", userDTO.getUserId());
+
+        // 1. 입력값 검증
+        validateUserInfo(userDTO);
+
+        // 2. 관리자 계정이 이미 존재하는지 확인
         if (userService.hasAdminAccount()) {
-            throw new UserException(USED_ID); // 또는 별도 예외 메시지 사용 가능
+            log.warn("관리자 계정 생성 실패: 이미 관리자 계정 존재");
+            throw new UserException(ADMIN_ALREADY_EXISTS);
         }
 
-        // 2. 사용자 ID 중복 확인
+        // 3. 사용자 ID 중복 확인
         if (isExistUserId(userDTO.getUserId())) {
+            log.warn("관리자 계정 생성 실패: 사용자 ID 중복 - {}", userDTO.getUserId());
             throw new UserException(USED_ID);
         }
 
-        // 3. 비밀번호 암호화
+        // 4. 비밀번호 암호화
         String saltBase64 = passwordService.generateSaltBase64();
         String hashed = passwordService.hashPassword(userDTO.getPassword(), saltBase64);
 
-        // 4. ROLE_ADMIN, ROLE_USER 조회
+        // 5. ROLE_ADMIN, ROLE_USER 조회
         Role adminRole = roleRepository.findByRoleCode("ROLE_ADMIN")
-                .orElseThrow(() -> new RuntimeException("ROLE_ADMIN not found in database"));
+                .orElseThrow(() -> {
+                    log.error("ROLE_ADMIN을 데이터베이스에서 찾을 수 없습니다.");
+                    return new UserException(ROLE_NOT_FOUND);
+                });
         Role userRole = roleRepository.findByRoleCode("ROLE_USER")
-                .orElseThrow(() -> new RuntimeException("ROLE_USER not found in database"));
+                .orElseThrow(() -> {
+                    log.error("ROLE_USER를 데이터베이스에서 찾을 수 없습니다.");
+                    return new UserException(ROLE_NOT_FOUND);
+                });
 
-        // 5. User 생성
+        // 6. User 생성 (ROLE_ADMIN + ROLE_USER 부여)
         User user = User.builder()
                 .userId(userDTO.getUserId())
                 .password(hashed)
                 .name(userDTO.getName())
                 .passwordSalt(saltBase64)
-                .roleEntities(Set.of(adminRole, userRole))  // Role Entity 할당
+                .roleEntities(Set.of(adminRole, userRole))
                 .build();
 
         userRepository.save(user);
-        log.info("초기 관리자 계정 생성 완료: {}", userDTO.getUserId());
+        log.info("초기 관리자 계정 생성 완료: userId={}, roles=[ROLE_ADMIN, ROLE_USER]", userDTO.getUserId());
+    }
+
+    /**
+     * 사용자 정보 유효성 검증
+     * - userId, password, name 필수 입력
+     *
+     * @param userDTO 검증할 사용자 정보
+     * @throws UserException 필수 정보가 누락된 경우
+     */
+    private void validateUserInfo(UserDTO userDTO) {
+        if (userDTO == null ||
+            userDTO.getUserId() == null || userDTO.getUserId().trim().isEmpty() ||
+            userDTO.getPassword() == null || userDTO.getPassword().trim().isEmpty() ||
+            userDTO.getName() == null || userDTO.getName().trim().isEmpty()) {
+            log.warn("사용자 정보 검증 실패: 필수 정보 누락");
+            throw new UserException(INVALID_USER_INFO);
+        }
     }
 
 }
