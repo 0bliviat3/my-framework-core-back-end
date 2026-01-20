@@ -1,5 +1,6 @@
 package com.wan.framework.board.service;
 
+import com.wan.framework.base.util.XssUtil;
 import com.wan.framework.board.constant.BoardDataStatus;
 import com.wan.framework.board.domain.BoardData;
 import com.wan.framework.board.domain.BoardMeta;
@@ -38,6 +39,10 @@ public class BoardDataService {
     public BoardDataDTO createPost(BoardDataDTO dto, String authorId) {
         BoardMeta boardMeta = boardMetaRepository.findByIdAndDataStateCodeNot(dto.getBoardMetaId(), D)
                 .orElseThrow(() -> new BoardException(NOT_FOUND_META));
+
+        // XSS 방어: 제목은 텍스트만, 본문은 리치 콘텐츠 허용
+        dto.setTitle(XssUtil.sanitizeTextOnly(dto.getTitle()));
+        dto.setContent(XssUtil.sanitizeRichContent(dto.getContent()));
 
         BoardData entity = mapper.toEntity(dto);
         entity.setBoardMeta(boardMeta);
@@ -104,6 +109,10 @@ public class BoardDataService {
         if (!permissionService.canModify(entity.getAuthorId(), userId)) {
             throw new BoardException(CANNOT_MODIFY_OTHER_POST);
         }
+
+        // XSS 방어: 제목은 텍스트만, 본문은 리치 콘텐츠 허용
+        dto.setTitle(XssUtil.sanitizeTextOnly(dto.getTitle()));
+        dto.setContent(XssUtil.sanitizeRichContent(dto.getContent()));
 
         mapper.updateEntityFromDto(dto, entity);
         entity.setDataStateCode(U);

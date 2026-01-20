@@ -1,5 +1,6 @@
 package com.wan.framework.board.service;
 
+import com.wan.framework.base.util.XssUtil;
 import com.wan.framework.board.domain.BoardComment;
 import com.wan.framework.board.domain.BoardData;
 import com.wan.framework.board.dto.BoardCommentDTO;
@@ -36,6 +37,9 @@ public class BoardCommentService {
         if (!boardData.getBoardMeta().getUseComment()) {
             throw new BoardException(COMMENT_NOT_ALLOWED);
         }
+
+        // XSS 방어: 댓글은 기본 서식만 허용 (굵게, 이탤릭 등)
+        dto.setContent(XssUtil.sanitizeBasicFormatting(dto.getContent()));
 
         BoardComment entity = mapper.toEntity(dto);
         entity.setBoardData(boardData);
@@ -81,7 +85,9 @@ public class BoardCommentService {
             throw new BoardException(CANNOT_MODIFY_OTHER_COMMENT);
         }
 
-        entity.updateContent(content);
+        // XSS 방어: 댓글은 기본 서식만 허용
+        String sanitizedContent = XssUtil.sanitizeBasicFormatting(content);
+        entity.updateContent(sanitizedContent);
         return mapper.toDto(entity);
     }
 
