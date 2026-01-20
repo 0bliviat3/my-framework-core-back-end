@@ -1,0 +1,48 @@
+# Git 관련
+.git
+.gitignore
+.gitattributes
+
+# Docker 관련
+Dockerfile
+docker-compose.yml
+.dockerignore
+.env
+.env.example
+
+# Gradle 빌드 결과물
+build/
+.gradle/
+out/
+
+# IDE 설정 파일
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+
+# 로그 파일
+*.log
+logs/
+
+# 임시 파일
+*.tmp
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# 업로드 파일
+uploads/
+
+# 문서
+docs/
+*.md
+LICENSE
+
+# 테스트 관련
+src/test/
