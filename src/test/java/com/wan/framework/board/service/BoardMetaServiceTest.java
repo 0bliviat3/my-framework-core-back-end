@@ -25,8 +25,9 @@ class BoardMetaServiceTest {
     @Test
     void 게시판_생성_성공() {
         // given
+        String uniqueTitle = "공지사항_" + System.currentTimeMillis();
         BoardMetaDTO dto = BoardMetaDTO.builder()
-                .title("공지사항")
+                .title(uniqueTitle)
                 .description("공지사항 게시판")
                 .roles("ROLE_USER")
                 .useComment(true)
@@ -39,7 +40,7 @@ class BoardMetaServiceTest {
         // then
         assertThat(created).isNotNull();
         assertThat(created.getId()).isNotNull();
-        assertThat(created.getTitle()).isEqualTo("공지사항");
+        assertThat(created.getTitle()).isEqualTo(uniqueTitle);
         assertThat(created.getDataStateCode()).isEqualTo(DataStateCode.I);
         assertThat(created.getAbleState()).isEqualTo(AbleState.ABLE);
     }

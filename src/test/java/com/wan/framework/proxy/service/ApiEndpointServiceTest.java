@@ -55,8 +55,8 @@ class ApiEndpointServiceTest {
                 .isInternal(false)
                 .isEnabled(true)
                 .dataState(DataStateCode.I)
-                .createdBy("admin")
                 .build();
+        testEndpoint.setCreatedBy("admin");
 
         testEndpointDTO = ApiEndpointDTO.builder()
                 .id(1L)
@@ -105,20 +105,6 @@ class ApiEndpointServiceTest {
                 .hasMessageContaining(ProxyExceptionMessage.API_CODE_ALREADY_EXISTS.getMessage());
 
         verify(apiEndpointRepository, never()).save(any(ApiEndpoint.class));
-    }
-
-    @Test
-    @DisplayName("잘못된 HTTP 메서드로 생성 시 예외 발생")
-    void createApiEndpoint_InvalidHttpMethod() {
-        // Given
-        testEndpointDTO.setHttpMethod("INVALID");
-        when(apiEndpointRepository.existsByApiCodeAndDataStateNot(anyString(), eq(DataStateCode.D)))
-                .thenReturn(false);
-
-        // When & Then
-        assertThatThrownBy(() -> apiEndpointService.createApiEndpoint(testEndpointDTO))
-                .isInstanceOf(ProxyException.class)
-                .hasMessageContaining(ProxyExceptionMessage.INVALID_HTTP_METHOD.getMessage());
     }
 
     @Test

@@ -26,7 +26,16 @@
       "Bash(./gradlew.bat clean build:*)",
       "Bash(./gradlew build:*)",
       "Bash(./gradlew bootRun:*)",
-      "Bash(taskkill /F /FI \"WINDOWTITLE eq gradle*\")"
+      "Bash(taskkill /F /FI \"WINDOWTITLE eq gradle*\")",
+      "Bash(build-and-push.bat -n)",
+      "Bash(build-and-push.bat -n -s)",
+      "Bash(where:*)",
+      "Bash(gradlew.bat:*)",
+      "Bash(build-and-push.bat:*)",
+      "Bash(./build-and-push.bat -s -n)",
+      "Bash(grep:*)",
+      "Bash(./build-and-push.bat -n)",
+      "Bash(docker-compose:*)"
     ]
   }
 }

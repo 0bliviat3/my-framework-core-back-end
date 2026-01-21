@@ -49,7 +49,7 @@ public class BoardCommentService {
         if (dto.getParentId() != null) {
             BoardComment parent = repository.findByIdAndDataStateCodeNot(dto.getParentId(), D)
                     .orElseThrow(() -> new BoardException(NOT_FOUND_COMMENT));
-            entity.setParent(parent);
+            parent.addChild(entity); // 양방향 관계 설정
         }
 
         BoardComment saved = repository.save(entity);

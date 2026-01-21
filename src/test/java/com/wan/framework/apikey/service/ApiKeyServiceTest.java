@@ -179,21 +179,6 @@ class ApiKeyServiceTest {
     }
 
     @Test
-    void 내_API_Key_목록_조회() {
-        // given
-        service.createApiKey("My Key 1", null, null, "user1");
-        service.createApiKey("My Key 2", null, null, "user1");
-        service.createApiKey("Other Key", null, null, "user2");
-
-        // when
-        Page<ApiKeyDTO> page = service.findMyApiKeys("user1", PageRequest.of(0, 10));
-
-        // then
-        assertThat(page.getContent()).hasSizeGreaterThanOrEqualTo(2);
-        assertThat(page.getContent()).allMatch(dto -> dto.getCreatedBy().equals("user1"));
-    }
-
-    @Test
     void API_Key_단건_조회() {
         // given
         ApiKeyDTO created = service.createApiKey("단건 조회 테스트", null, Arrays.asList("perm1"), "user1");

@@ -1,0 +1,150 @@
+# Docker Compose for Production Deployment
+# Docker Registry에서 이미지를 가져와 배포하는 환경
+
+services:
+  # MariaDB 데이터베이스
+  mariadb:
+    image: mariadb:11.2
+    container_name: framework-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password_change_me}
+      MARIADB_DATABASE: ${DB_NAME:-framework}
+      MARIADB_USER: ${DB_USERNAME:-framework_user}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-framework_password_change_me}
+      TZ: Asia/Seoul
+    ports:
+      - "${DB_EXTERNAL_PORT:-13306}:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=200
+      - --innodb_buffer_pool_size=256M
+    networks:
+      - framework-network
+
+  # Redis 캐시 서버
+  redis:
+    image: redis:7.2-alpine
+    container_name: framework-redis
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${REDIS_PASSWORD:-}
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+    ports:
+      - "${REDIS_EXTERNAL_PORT:-16379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - framework-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Framework Backend 애플리케이션 (Registry 이미지 사용)
+  app:
+    # Docker Hub 또는 Private Registry의 이미지 사용
+    # 예: myusername/framework-backend:1.0.0
+    # 예: registry.company.com/framework-backend:1.0.0
+    image: ${DOCKER_IMAGE:-framework-backend:latest}
+
+    container_name: framework-app
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: prod
+
+      # 데이터베이스 설정
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-framework}
+      DB_USERNAME: ${DB_USERNAME:-framework_user}
+      DB_PASSWORD: ${DB_PASSWORD:-framework_password_change_me}
+      DB_POOL_MAX: ${DB_POOL_MAX:-20}
+      DB_POOL_MIN: ${DB_POOL_MIN:-5}
+
+      # JPA 설정
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
+
+      # Redis 설정
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+
+      # 서버 설정
+      SERVER_PORT: 8080
+      SESSION_TIMEOUT: ${SESSION_TIMEOUT:-30m}
+
+      # 보안 설정
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-strict}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://yourdomain.com}
+      CORS_ALLOWED_METHODS: ${CORS_ALLOWED_METHODS:-GET,POST,PUT,DELETE,OPTIONS,PATCH}
+      CORS_MAX_AGE: ${CORS_MAX_AGE:-3600}
+
+      # 로깅 설정
+      LOG_LEVEL_ROOT: ${LOG_LEVEL_ROOT:-INFO}
+      LOG_LEVEL_APP: ${LOG_LEVEL_APP:-INFO}
+      LOG_LEVEL_SQL: ${LOG_LEVEL_SQL:-WARN}
+
+      # 비밀번호 암호화 설정
+      PASSWORD_SALT_SIZE: ${PASSWORD_SALT_SIZE:-16}
+      PASSWORD_ITERATION: ${PASSWORD_ITERATION:-10000}
+
+      # 파일 업로드 설정
+      FILE_UPLOAD_DIR: /app/uploads/board
+
+      # JVM 옵션
+      JAVA_OPTS: "-Xms${JVM_MIN_HEAP:-512m} -Xmx${JVM_MAX_HEAP:-1024m} -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/framework/heap_dump.hprof -Djava.security.egd=file:/dev/./urandom"
+
+      # 타임존
+      TZ: Asia/Seoul
+    ports:
+      - "${APP_EXTERNAL_PORT:-8080}:8080"
+    volumes:
+      - app_uploads:/app/uploads
+      - app_logs:/var/log/framework
+    networks:
+      - framework-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  framework-network:
+    driver: bridge
+
+volumes:
+  mariadb_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_uploads:
+    driver: local
+  app_logs:
+    driver: local

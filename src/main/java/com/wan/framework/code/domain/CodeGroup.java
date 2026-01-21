@@ -32,6 +32,7 @@ public class CodeGroup {
     @Column(name = "description", length = 500)
     private String description;  // 그룹 설명
 
+    @Builder.Default
     @Column(name = "enabled", nullable = false)
     private Boolean enabled = true;  // 활성화 여부
 

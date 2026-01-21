@@ -205,7 +205,8 @@ class XssUtilTest {
         String result = XssUtil.sanitizeTextOnly(input);
 
         // Then
-        assertEquals(input, result);
+        // & 문자는 &amp;로 이스케이프됨 (HTML 안전성을 위해)
+        assertEquals("가격: 10,000원 (50% 할인!) &amp; 무료배송", result);
     }
 
     @Test

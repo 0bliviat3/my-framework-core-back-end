@@ -75,6 +75,7 @@ class SessionSecurityServiceTest {
     @DisplayName("User-Agent 검증 - 일치")
     void validateUserAgent_Match() {
         // given
+        securityConfig.setValidateIp(false); // IP 검증 비활성화
         securityConfig.setValidateUserAgent(true);
         given(session.getAttribute(ATTR_USER_AGENT)).willReturn("TestAgent");
         given(request.getHeader("User-Agent")).willReturn("TestAgent");
@@ -88,6 +89,7 @@ class SessionSecurityServiceTest {
     @DisplayName("User-Agent 검증 - 불일치")
     void validateUserAgent_Mismatch() {
         // given
+        securityConfig.setValidateIp(false); // IP 검증 비활성화
         securityConfig.setValidateUserAgent(true);
         given(session.getAttribute(ATTR_USER_AGENT)).willReturn("TestAgent");
         given(request.getHeader("User-Agent")).willReturn("DifferentAgent");
