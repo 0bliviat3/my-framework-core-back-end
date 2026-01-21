@@ -4,7 +4,11 @@ import com.wan.framework.base.constant.PublicApiConstants;
 import com.wan.framework.permission.constant.ApiStatus;
 import com.wan.framework.permission.constant.PermissionConstants;
 import com.wan.framework.permission.domain.ApiRegistry;
+import com.wan.framework.permission.domain.Role;
+import com.wan.framework.permission.domain.RoleApiPermission;
 import com.wan.framework.permission.repository.ApiRegistryRepository;
+import com.wan.framework.permission.repository.RoleApiPermissionRepository;
+import com.wan.framework.permission.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -30,6 +34,8 @@ public class ApiRegistryScanService {
 
     private final RequestMappingHandlerMapping requestMappingHandlerMapping;
     private final ApiRegistryRepository apiRegistryRepository;
+    private final RoleRepository roleRepository;
+    private final RoleApiPermissionRepository roleApiPermissionRepository;
 
     /**
      * 애플리케이션 시작 완료 후 API 스캔
@@ -138,9 +144,80 @@ public class ApiRegistryScanService {
             log.info("===== API Registry Scan Completed =====");
             log.info("INSERT: {}, UPDATE: {}, DEACTIVATE: {}", insertCount, updateCount, deactivateCount);
 
+            // 4. ROLE_ADMIN에 모든 API 권한 자동 부여
+            grantAllPermissionsToAdmin();
+
         } catch (Exception e) {
             log.error("Failed to scan and register APIs", e);
             throw e;
+        }
+    }
+
+    /**
+     * ROLE_ADMIN에 모든 활성화된 API 권한 자동 부여
+     */
+    private void grantAllPermissionsToAdmin() {
+        log.info("===== Granting All Permissions to ROLE_ADMIN =====");
+
+        try {
+            // ROLE_ADMIN 조회
+            Role adminRole = roleRepository.findByRoleCode("ROLE_ADMIN")
+                    .orElse(null);
+
+            if (adminRole == null) {
+                log.warn("ROLE_ADMIN not found. Skip granting permissions.");
+                return;
+            }
+
+            // 모든 활성화된 API 조회
+            List<ApiRegistry> activeApis = apiRegistryRepository.findByStatus(ApiStatus.ACTIVE);
+            log.info("Found {} active APIs to grant permissions", activeApis.size());
+
+            if (activeApis.isEmpty()) {
+                log.warn("No active APIs found. Skip granting permissions.");
+                return;
+            }
+
+            // 기존 ROLE_ADMIN 권한 조회
+            List<RoleApiPermission> existingPermissions = roleApiPermissionRepository.findByRole(adminRole);
+            Set<Long> existingApiIds = existingPermissions.stream()
+                    .map(p -> p.getApiRegistry().getApiId())
+                    .collect(Collectors.toSet());
+
+            // 신규 권한 부여
+            int grantedCount = 0;
+            int updatedCount = 0;
+
+            for (ApiRegistry api : activeApis) {
+                if (existingApiIds.contains(api.getApiId())) {
+                    // 이미 권한이 있는 경우 allowed=true로 업데이트
+                    RoleApiPermission existing = existingPermissions.stream()
+                            .filter(p -> p.getApiRegistry().getApiId().equals(api.getApiId()))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (existing != null && !existing.getAllowed()) {
+                        existing.setAllowed(true);
+                        updatedCount++;
+                    }
+                } else {
+                    // 신규 권한 부여
+                    RoleApiPermission newPermission = RoleApiPermission.builder()
+                            .role(adminRole)
+                            .apiRegistry(api)
+                            .allowed(true)
+                            .build();
+                    roleApiPermissionRepository.save(newPermission);
+                    grantedCount++;
+                }
+            }
+
+            log.info("===== ROLE_ADMIN Permissions Granted =====");
+            log.info("NEW: {}, UPDATED: {}", grantedCount, updatedCount);
+
+        } catch (Exception e) {
+            log.error("Failed to grant permissions to ROLE_ADMIN", e);
+            // 권한 부여 실패해도 애플리케이션 시작은 계속 진행
         }
     }
 
