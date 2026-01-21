@@ -178,42 +178,33 @@ public class ApiRegistryScanService {
                 return;
             }
 
-            // 기존 ROLE_ADMIN 권한 조회
-            List<RoleApiPermission> existingPermissions = roleApiPermissionRepository.findByRole(adminRole);
-            Set<Long> existingApiIds = existingPermissions.stream()
-                    .map(p -> p.getApiRegistry().getApiId())
-                    .collect(Collectors.toSet());
-
-            // 신규 권한 부여
+            // 각 API에 대해 권한 부여 (PermissionService 로직 재사용)
             int grantedCount = 0;
-            int updatedCount = 0;
-
             for (ApiRegistry api : activeApis) {
-                if (existingApiIds.contains(api.getApiId())) {
-                    // 이미 권한이 있는 경우 allowed=true로 업데이트
-                    RoleApiPermission existing = existingPermissions.stream()
-                            .filter(p -> p.getApiRegistry().getApiId().equals(api.getApiId()))
-                            .findFirst()
-                            .orElse(null);
-
-                    if (existing != null && !existing.getAllowed()) {
-                        existing.setAllowed(true);
-                        updatedCount++;
-                    }
-                } else {
-                    // 신규 권한 부여
-                    RoleApiPermission newPermission = RoleApiPermission.builder()
-                            .role(adminRole)
-                            .apiRegistry(api)
-                            .allowed(true)
-                            .build();
-                    roleApiPermissionRepository.save(newPermission);
+                try {
+                    // 기존 권한 확인
+                    roleApiPermissionRepository.findByRoleAndApiRegistry(adminRole, api)
+                            .ifPresentOrElse(
+                                    // 이미 있으면 allowed=true로 업데이트
+                                    permission -> permission.setAllowed(true),
+                                    // 없으면 신규 생성
+                                    () -> {
+                                        RoleApiPermission newPermission = RoleApiPermission.builder()
+                                                .role(adminRole)
+                                                .apiRegistry(api)
+                                                .allowed(true)
+                                                .build();
+                                        roleApiPermissionRepository.save(newPermission);
+                                    }
+                            );
                     grantedCount++;
+                } catch (Exception e) {
+                    log.debug("Skip granting permission for API {}: {}", api.getApiIdentifier(), e.getMessage());
                 }
             }
 
             log.info("===== ROLE_ADMIN Permissions Granted =====");
-            log.info("NEW: {}, UPDATED: {}", grantedCount, updatedCount);
+            log.info("Granted: {} APIs", grantedCount);
 
         } catch (Exception e) {
             log.error("Failed to grant permissions to ROLE_ADMIN", e);
