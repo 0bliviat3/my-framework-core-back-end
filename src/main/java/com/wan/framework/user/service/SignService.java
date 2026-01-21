@@ -208,11 +208,6 @@ public class SignService {
                     log.error("ROLE_ADMIN을 데이터베이스에서 찾을 수 없습니다.");
                     return new UserException(ROLE_NOT_FOUND);
                 });
-        Role userRole = roleRepository.findByRoleCode("ROLE_USER")
-                .orElseThrow(() -> {
-                    log.error("ROLE_USER를 데이터베이스에서 찾을 수 없습니다.");
-                    return new UserException(ROLE_NOT_FOUND);
-                });
 
         // 6. User 생성 (ROLE_ADMIN + ROLE_USER 부여)
         User user = User.builder()
@@ -220,7 +215,7 @@ public class SignService {
                 .password(hashed)
                 .name(userDTO.getName())
                 .passwordSalt(saltBase64)
-                .roleEntities(Set.of(adminRole, userRole))
+                .roleEntities(Set.of(adminRole))
                 .build();
 
         userRepository.save(user);

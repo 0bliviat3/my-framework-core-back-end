@@ -45,11 +45,17 @@ public class PermissionCacheService {
                     .map(ApiRegistry::getApiIdentifier)
                     .collect(Collectors.toSet());
 
-            // Redis에 저장
-            redisTemplate.opsForSet().add(cacheKey, apiIdentifiers.toArray());
-            redisTemplate.expire(cacheKey, PermissionConstants.CACHE_TTL_HOURS, TimeUnit.HOURS);
-
-            log.info("Cached permissions for role: {} ({} APIs)", roleCode, apiIdentifiers.size());
+            // 권한이 있는 경우에만 Redis에 저장
+            if (!apiIdentifiers.isEmpty()) {
+                // Redis에 저장
+                redisTemplate.opsForSet().add(cacheKey, apiIdentifiers.toArray());
+                redisTemplate.expire(cacheKey, PermissionConstants.CACHE_TTL_HOURS, TimeUnit.HOURS);
+                log.info("Cached permissions for role: {} ({} APIs)", roleCode, apiIdentifiers.size());
+            } else {
+                // 권한이 없는 경우 빈 캐시로 저장 (TTL 짧게)
+                redisTemplate.opsForValue().set(cacheKey, "EMPTY", 1, TimeUnit.HOURS);
+                log.info("Cached empty permissions for role: {}", roleCode);
+            }
 
         } catch (Exception e) {
             log.error("Failed to cache role permissions: {}", roleCode, e);
