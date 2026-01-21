@@ -173,7 +173,7 @@ public class SignService {
     /**
      * 초기 관리자 계정 생성
      * - 관리자 계정이 없을 때만 생성 가능
-     * - ROLE_ADMIN, ROLE_USER 권한 자동 부여
+     * - ROLE_ADMIN 권한 자동 부여
      * - 사용자 정보 검증 (userId, password, name 필수)
      *
      * @param userDTO 관리자 정보 (userId, password, name)
@@ -219,7 +219,7 @@ public class SignService {
                 .build();
 
         userRepository.save(user);
-        log.info("초기 관리자 계정 생성 완료: userId={}, roles=[ROLE_ADMIN, ROLE_USER]", userDTO.getUserId());
+        log.info("초기 관리자 계정 생성 완료: userId={}, roles=[ROLE_ADMIN]", userDTO.getUserId());
     }
 
     /**
