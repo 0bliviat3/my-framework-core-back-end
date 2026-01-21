@@ -24,6 +24,12 @@ services:
       - --innodb_buffer_pool_size=256M
     networks:
       - framework-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Redis 캐시 서버
   redis:
