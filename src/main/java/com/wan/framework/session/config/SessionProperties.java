@@ -22,15 +22,15 @@ public class SessionProperties {
         private String name = "SESSION_ID";
         private String path = "/";
         private boolean httpOnly = true;
-        private boolean secure = true;
-        private String sameSite = "Strict";
+        private boolean secure = false;  // HTTP 환경에서는 false, HTTPS에서는 true
+        private String sameSite = "Lax";  // Strict는 너무 제한적, Lax 권장
         private int maxAge = 1800;  // 30분
         private String domain;
     }
 
     @Data
     public static class Security {
-        private boolean validateIp = true;
+        private boolean validateIp = false;  // Docker 환경 호환을 위해 기본값 false
         private boolean validateUserAgent = false;
         private java.util.List<String> trustedProxies = new java.util.ArrayList<>();  // 신뢰할 수 있는 프록시 IP
     }

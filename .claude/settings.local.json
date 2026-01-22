@@ -35,7 +35,8 @@
       "Bash(./build-and-push.bat -s -n)",
       "Bash(grep:*)",
       "Bash(./build-and-push.bat -n)",
-      "Bash(docker-compose:*)"
+      "Bash(docker-compose:*)",
+      "Bash(docker compose:*)"
     ]
   }
 }

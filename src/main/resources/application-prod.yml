@@ -133,3 +133,28 @@ management:
     export:
       prometheus:
         enabled: true
+
+# 커스텀 세션 설정 (SessionProperties와 바인딩)
+session:
+  cookie:
+    name: SESSION_ID
+    path: /
+    http-only: true
+    secure: ${COOKIE_SECURE:true}
+    same-site: ${COOKIE_SAME_SITE:Lax}
+    max-age: 1800
+    domain: ${COOKIE_DOMAIN:}
+
+  security:
+    validate-ip: ${SESSION_VALIDATE_IP:false}
+    validate-user-agent: ${SESSION_VALIDATE_UA:false}
+    trusted-proxies: ${SESSION_TRUSTED_PROXIES:}
+
+  refresh:
+    enabled: ${SESSION_REFRESH_ENABLED:true}
+    threshold: ${SESSION_REFRESH_THRESHOLD:0.5}
+
+  concurrent:
+    enabled: ${SESSION_CONCURRENT_ENABLED:true}
+    max-sessions: ${SESSION_MAX_SESSIONS:3}
+    prevent-login: ${SESSION_PREVENT_LOGIN:false}

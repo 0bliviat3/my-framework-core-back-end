@@ -87,6 +87,31 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
+# 커스텀 세션 설정 (SessionProperties와 바인딩)
+session:
+  cookie:
+    name: SESSION_ID
+    path: /
+    http-only: true
+    secure: false  # 로컬 개발 환경 HTTP
+    same-site: Lax  # 로컬 개발용
+    max-age: 1800
+    domain: localhost
+
+  security:
+    validate-ip: false  # Docker/프록시 환경에서 문제 방지
+    validate-user-agent: false
+    trusted-proxies: []
+
+  refresh:
+    enabled: true
+    threshold: 0.5
+
+  concurrent:
+    enabled: true
+    max-sessions: 3
+    prevent-login: false
+
 # 비밀번호 암호화 설정
 password:
   salt:
