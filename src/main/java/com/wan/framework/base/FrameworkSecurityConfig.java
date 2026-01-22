@@ -30,14 +30,10 @@ public class FrameworkSecurityConfig {
     @Value("${security.cors.max-age:3600}")
     private Long corsMaxAge;
 
-    @Value("${server.servlet.session.cookie.secure:false}")
-    private boolean secureCookie;
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         log.info("Initializing Security Configuration");
         log.info("Allowed CORS Origins: {}", Arrays.toString(allowedOrigins));
-        log.info("Secure Cookie: {}", secureCookie);
 
         http
                 // CSRF 비활성화 (세션 기반 인증에서는 활성화 권장하나, REST API에서는 비활성화)
@@ -46,11 +42,11 @@ public class FrameworkSecurityConfig {
                 // CORS 설정 적용
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // 세션 정책 (STATELESS는 JWT용, 세션 사용 시 IF_REQUIRED)
+                // 세션 정책 (Spring Session + Redis에서 관리)
+                // 주의: maximumSessions 설정은 SessionProperties에서 관리하므로 여기서는 설정하지 않음
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-                        .maximumSessions(1)  // 동시 세션 1개 제한
-                        .maxSessionsPreventsLogin(false)  // 기존 세션 만료
+                        // 동시 세션 제한은 SessionConcurrentService에서 처리
                 )
 
                 // 보안 헤더 설정

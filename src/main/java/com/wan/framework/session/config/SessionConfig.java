@@ -22,6 +22,12 @@ public class SessionConfig {
 
     private final SessionProperties sessionProperties;
 
+    @org.springframework.beans.factory.annotation.Value("${COOKIE_SECURE:not-set}")
+    private String cookieSecureEnv;
+
+    @org.springframework.beans.factory.annotation.Value("${COOKIE_SAME_SITE:not-set}")
+    private String cookieSameSiteEnv;
+
     /**
      * 쿠키 시리얼라이저 설정
      */
@@ -41,17 +47,33 @@ public class SessionConfig {
             serializer.setDomainName(cookie.getDomain());
         }
 
-        // 설정 로깅
-        log.info("=== Session Cookie Configuration ===");
-        log.info("Cookie Name: {}", cookie.getName());
-        log.info("Cookie Path: {}", cookie.getPath());
-        log.info("HttpOnly: {}", cookie.isHttpOnly());
-        log.info("Secure: {}", cookie.isSecure());
-        log.info("SameSite: {}", cookie.getSameSite());
-        log.info("MaxAge: {}", cookie.getMaxAge());
-        log.info("Domain: {}", cookie.getDomain());
-        log.info("IP Validation: {}", sessionProperties.getSecurity().isValidateIp());
-        log.info("====================================");
+        // 설정 로깅 (환경변수와 실제 바인딩 값 비교)
+        log.info("========================================");
+        log.info("Session Cookie Configuration");
+        log.info("========================================");
+        log.info("[Environment Variables]");
+        log.info("  COOKIE_SECURE (env): {}", cookieSecureEnv);
+        log.info("  COOKIE_SAME_SITE (env): {}", cookieSameSiteEnv);
+        log.info("");
+        log.info("[SessionProperties (Bound Values)]");
+        log.info("  Cookie Name: {}", cookie.getName());
+        log.info("  Cookie Path: {}", cookie.getPath());
+        log.info("  HttpOnly: {}", cookie.isHttpOnly());
+        log.info("  Secure: {} (Expected from env: {})", cookie.isSecure(), cookieSecureEnv);
+        log.info("  SameSite: {} (Expected from env: {})", cookie.getSameSite(), cookieSameSiteEnv);
+        log.info("  MaxAge: {} seconds", cookie.getMaxAge());
+        log.info("  Domain: {}", cookie.getDomain() == null ? "(empty)" : cookie.getDomain());
+        log.info("");
+        log.info("[Security Settings]");
+        log.info("  IP Validation: {}", sessionProperties.getSecurity().isValidateIp());
+        log.info("  UserAgent Validation: {}", sessionProperties.getSecurity().isValidateUserAgent());
+        log.info("");
+        log.info("[Session Management]");
+        log.info("  Refresh Enabled: {}", sessionProperties.getRefresh().isEnabled());
+        log.info("  Refresh Threshold: {}", sessionProperties.getRefresh().getThreshold());
+        log.info("  Concurrent Sessions: {}", sessionProperties.getConcurrent().isEnabled());
+        log.info("  Max Sessions: {}", sessionProperties.getConcurrent().getMaxSessions());
+        log.info("========================================");
 
         return serializer;
     }
