@@ -39,8 +39,17 @@ public class SessionConfig {
         serializer.setCookieName(cookie.getName());
         serializer.setCookiePath(cookie.getPath());
         serializer.setUseHttpOnlyCookie(cookie.isHttpOnly());
-        serializer.setUseSecureCookie(cookie.isSecure());
-        serializer.setSameSite(cookie.getSameSite());
+
+        // SameSite=None일 때는 반드시 Secure=true 필요 (브라우저 정책)
+        boolean isSecure = cookie.isSecure();
+        String sameSite = cookie.getSameSite();
+        if ("None".equalsIgnoreCase(sameSite) && !isSecure) {
+            log.warn("SameSite=None requires Secure=true. Forcing Secure flag.");
+            isSecure = true;
+        }
+
+        serializer.setUseSecureCookie(isSecure);
+        serializer.setSameSite(sameSite);
         serializer.setCookieMaxAge(cookie.getMaxAge());
 
         if (cookie.getDomain() != null && !cookie.getDomain().isEmpty()) {
@@ -59,8 +68,10 @@ public class SessionConfig {
         log.info("  Cookie Name: {}", cookie.getName());
         log.info("  Cookie Path: {}", cookie.getPath());
         log.info("  HttpOnly: {}", cookie.isHttpOnly());
-        log.info("  Secure: {} (Expected from env: {})", cookie.isSecure(), cookieSecureEnv);
-        log.info("  SameSite: {} (Expected from env: {})", cookie.getSameSite(), cookieSameSiteEnv);
+        log.info("  Secure (config): {} (Expected from env: {})", cookie.isSecure(), cookieSecureEnv);
+        log.info("  Secure (final): {} {}", isSecure,
+                isSecure != cookie.isSecure() ? "(forced by SameSite=None)" : "");
+        log.info("  SameSite: {} (Expected from env: {})", sameSite, cookieSameSiteEnv);
         log.info("  MaxAge: {} seconds", cookie.getMaxAge());
         log.info("  Domain: {}", cookie.getDomain() == null ? "(empty)" : cookie.getDomain());
         log.info("");

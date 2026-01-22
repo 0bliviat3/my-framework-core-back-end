@@ -74,11 +74,7 @@ server:
   port: 8080
   servlet:
     context-path: /
-    session:
-      timeout: 30m
-      cookie:
-        http-only: true
-        secure: false  # HTTPS 사용 시 true로 변경
+    # session 설정은 SessionProperties에서 관리 (중복 방지)
 
 logging:
   level:
