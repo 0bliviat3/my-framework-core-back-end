@@ -154,3 +154,11 @@ session:
     enabled: ${SESSION_CONCURRENT_ENABLED:true}
     max-sessions: ${SESSION_MAX_SESSIONS:3}
     prevent-login: ${SESSION_PREVENT_LOGIN:false}
+
+# swagger 제거
+springdoc:
+  api-docs:
+    enabled: false
+
+  swagger-ui:
+    enabled: false
