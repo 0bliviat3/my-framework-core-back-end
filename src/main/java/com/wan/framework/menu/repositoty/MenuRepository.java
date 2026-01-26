@@ -18,6 +18,14 @@ public interface MenuRepository extends JpaRepository<Menu, Long> {
     boolean existsByNameAndIdNotAndDataStateCodeNot(String name, Long id, DataStateCode dataStateCode);
 
     /**
+     * 특정 부모의 모든 활성 자식 메뉴 조회
+     * @param parentId 부모 메뉴 ID
+     * @param dataStateCode 제외할 상태 코드 (D)
+     * @return 활성 자식 메뉴 리스트
+     */
+    List<Menu> findAllByParentIdAndDataStateCodeNot(Long parentId, DataStateCode dataStateCode);
+
+    /**
      * 권한 기반 메뉴 조회 (Role Entity Join)
      * - Role Entity FK 관계 사용
      */

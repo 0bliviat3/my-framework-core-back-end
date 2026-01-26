@@ -184,13 +184,44 @@ public class MenuService {
     }
 
     /**
-     * 메뉴 삭제
+     * 메뉴 삭제 (재귀적 계단식 삭제)
+     * - 하위 메뉴가 있는 경우 모두 함께 삭제 표시
      */
     @Transactional
     public void deleteMenu(Long id) {
         Menu menu = menuRepository.findByIdAndDataStateCodeNot(id, D)
                 .orElseThrow(() -> new MenuException(NOT_FOUND_MENU));
+
+        // 하위 메뉴 존재 확인 (로깅용)
+        List<Menu> children = menuRepository.findAllByParentIdAndDataStateCodeNot(id, D);
+        if (!children.isEmpty()) {
+            log.info("Deleting menu with children: menuId={}, menuName={}, childCount={}",
+                    id, menu.getName(), children.size());
+        }
+
+        // 재귀적으로 모든 하위 메뉴 삭제
+        deleteMenuRecursive(menu);
+
+        log.info("Menu deletion completed: menuId={}", id);
+    }
+
+    /**
+     * 재귀적으로 메뉴와 하위 메뉴 삭제
+     */
+    private void deleteMenuRecursive(Menu menu) {
+        // 1. 하위 메뉴 먼저 삭제 (깊이 우선 탐색)
+        List<Menu> children = menuRepository.findAllByParentIdAndDataStateCodeNot(
+                menu.getId(), D
+        );
+
+        for (Menu child : children) {
+            deleteMenuRecursive(child);
+        }
+
+        // 2. 현재 메뉴 삭제 표시
         menu.setDataStateCode(D);
+        log.debug("Menu marked as deleted: menuId={}, menuName={}",
+                menu.getId(), menu.getName());
     }
 }
 
