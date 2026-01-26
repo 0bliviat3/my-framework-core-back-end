@@ -1,8 +1,6 @@
 package com.wan.framework.menu.service;
 
 import com.wan.framework.base.constant.DataStateCode;
-import com.wan.framework.menu.constant.MenuType;
-import com.wan.framework.menu.domain.Menu;
 import com.wan.framework.menu.dto.MenuDTO;
 import com.wan.framework.menu.repositoty.MenuRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -118,12 +116,11 @@ class MenuServiceTest {
      * 테스트용 메뉴 생성 헬퍼 메서드
      */
     private MenuDTO createMenu(String name, Long parentId) {
-        MenuDTO menuDTO = new MenuDTO();
-        menuDTO.setName(name);
-        menuDTO.setType(MenuType.MENU);
-        menuDTO.setParentId(parentId);
-        menuDTO.setOrderNum(1);
-        menuDTO.setIsUse(true);
+        MenuDTO menuDTO = MenuDTO.builder()
+                .name(name)
+                .type("MENU")
+                .parentId(parentId)
+                .build();
         return menuService.createMenu(menuDTO);
     }
 }
