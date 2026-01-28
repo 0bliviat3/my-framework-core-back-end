@@ -13,6 +13,7 @@ public interface ApiEndpointMapper {
     /**
      * Entity -> DTO
      */
+    @Mapping(target = "apiRegistryInfo", ignore = true)
     ApiEndpointDTO toDto(ApiEndpoint entity);
 
     /**

@@ -29,10 +29,29 @@ public class ApiEndpointDTO {
     private Integer retryCount;
     private Integer retryIntervalMs;
     private Boolean isInternal;
+    private Long apiRegistryId;
+    private ApiRegistryInfo apiRegistryInfo;
     private Boolean isEnabled;
     private DataStateCode dataState;
     private String createdBy;
     private LocalDateTime createdAt;
     private String updatedBy;
     private LocalDateTime updatedAt;
+
+    /**
+     * API Registry 간단 정보
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ApiRegistryInfo {
+        private Long apiId;
+        private String serviceId;
+        private String httpMethod;
+        private String uriPattern;
+        private String controllerName;
+        private String handlerMethod;
+        private String description;
+    }
 }

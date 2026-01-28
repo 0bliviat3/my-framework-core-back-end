@@ -37,7 +37,13 @@
       "Bash(./build-and-push.bat -n)",
       "Bash(docker-compose:*)",
       "Bash(docker compose:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(./gradlew compileJava:*)",
+      "Bash(.gradlew.bat testClasses:*)",
+      "Bash(Select-String -Pattern \"\\(BUILD|FAILED|error|warning|Test\\)\")",
+      "Bash(Select-Object -First 50)",
+      "Bash(gradlew testClasses:*)",
+      "Bash(gradlew test:*)"
     ]
   }
 }

@@ -30,7 +30,15 @@ public enum ProxyExceptionMessage {
     MAX_RETRY_EXCEEDED("PROXY_013", "최대 재시도 횟수를 초과했습니다."),
 
     // 히스토리 관련
-    EXECUTION_HISTORY_NOT_FOUND("PROXY_014", "실행 이력을 찾을 수 없습니다.");
+    EXECUTION_HISTORY_NOT_FOUND("PROXY_014", "실행 이력을 찾을 수 없습니다."),
+
+    // API Registry 관련
+    API_REGISTRY_NOT_FOUND("PROXY_015", "매칭되는 API Registry를 찾을 수 없습니다."),
+    API_REGISTRY_INACTIVE("PROXY_016", "비활성화된 API Registry입니다."),
+    INTERNAL_API_INVOCATION_FAILED("PROXY_017", "내부 API 호출에 실패했습니다."),
+    CONTROLLER_BEAN_NOT_FOUND("PROXY_018", "컨트롤러 빈을 찾을 수 없습니다."),
+    HANDLER_METHOD_NOT_FOUND("PROXY_019", "핸들러 메서드를 찾을 수 없습니다."),
+    PARAMETER_CONVERSION_FAILED("PROXY_020", "파라미터 변환에 실패했습니다.");
 
     private final String code;
     private final String message;

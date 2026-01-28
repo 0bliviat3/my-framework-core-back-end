@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-01-20T14:41:31+0900",
+    date = "2026-01-27T19:15:33+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.15 (OpenLogic)"
 )
 @Component
@@ -33,6 +33,7 @@ public class ApiEndpointMapperImpl implements ApiEndpointMapper {
         apiEndpointDTO.retryCount( entity.getRetryCount() );
         apiEndpointDTO.retryIntervalMs( entity.getRetryIntervalMs() );
         apiEndpointDTO.isInternal( entity.getIsInternal() );
+        apiEndpointDTO.apiRegistryId( entity.getApiRegistryId() );
         apiEndpointDTO.isEnabled( entity.getIsEnabled() );
         apiEndpointDTO.dataState( entity.getDataState() );
         apiEndpointDTO.createdBy( entity.getCreatedBy() );
@@ -63,6 +64,7 @@ public class ApiEndpointMapperImpl implements ApiEndpointMapper {
         apiEndpoint.retryCount( dto.getRetryCount() );
         apiEndpoint.retryIntervalMs( dto.getRetryIntervalMs() );
         apiEndpoint.isInternal( dto.getIsInternal() );
+        apiEndpoint.apiRegistryId( dto.getApiRegistryId() );
         apiEndpoint.isEnabled( dto.getIsEnabled() );
         apiEndpoint.dataState( dto.getDataState() );
 
@@ -122,6 +124,9 @@ public class ApiEndpointMapperImpl implements ApiEndpointMapper {
         }
         if ( dto.getIsInternal() != null ) {
             entity.setIsInternal( dto.getIsInternal() );
+        }
+        if ( dto.getApiRegistryId() != null ) {
+            entity.setApiRegistryId( dto.getApiRegistryId() );
         }
         if ( dto.getIsEnabled() != null ) {
             entity.setIsEnabled( dto.getIsEnabled() );

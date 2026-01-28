@@ -102,6 +102,14 @@ public class ApiEndpoint extends BaseAuditEntity {
     private Boolean isInternal = true;
 
     /**
+     * API Registry ID (내부 API 매핑)
+     * - isInternal=true인 경우 필수
+     * - 컨트롤러 빈과 핸들러 메서드 정보 획득용
+     */
+    @Column(name = "api_registry_id")
+    private Long apiRegistryId;
+
+    /**
      * 사용 여부
      */
     @Column(nullable = false)
@@ -121,12 +129,26 @@ public class ApiEndpoint extends BaseAuditEntity {
         if (this.dataState == null) {
             this.dataState = DataStateCode.I;
         }
+        validateInternalApi();
     }
 
     @PreUpdate
     protected void onUpdate() {
         if (this.dataState == DataStateCode.I) {
             this.dataState = DataStateCode.U;
+        }
+        validateInternalApi();
+    }
+
+    /**
+     * 내부 API 검증 - Registry 매핑 필수
+     */
+    private void validateInternalApi() {
+        if (Boolean.TRUE.equals(this.isInternal) && this.apiRegistryId == null) {
+            throw new IllegalStateException(
+                "Internal API must have a valid apiRegistryId mapping. " +
+                "Please ensure the targetUrl matches an existing ApiRegistry."
+            );
         }
     }
 }

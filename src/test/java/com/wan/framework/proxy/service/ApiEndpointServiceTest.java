@@ -35,6 +35,9 @@ class ApiEndpointServiceTest {
     @Mock
     private ApiEndpointMapper apiEndpointMapper;
 
+    @Mock
+    private ApiRegistryMatchingService registryMatchingService;
+
     @InjectMocks
     private ApiEndpointService apiEndpointService;
 
@@ -230,5 +233,196 @@ class ApiEndpointServiceTest {
         // Then
         assertThat(testEndpoint.getIsEnabled()).isNotEqualTo(originalState);
         verify(apiEndpointRepository, times(1)).save(any(ApiEndpoint.class));
+    }
+
+    @Test
+    @DisplayName("내부 API 생성 시 ApiRegistry 자동 매핑 성공")
+    void createApiEndpoint_InternalApi_AutoMapping_Success() {
+        // Given
+        testEndpointDTO.setIsInternal(true);
+        testEndpointDTO.setTargetUrl("/api/users/{id}");
+        testEndpointDTO.setHttpMethod("GET");
+
+        testEndpoint.setIsInternal(true);
+        testEndpoint.setTargetUrl("/api/users/{id}");
+        testEndpoint.setHttpMethod("GET");
+        testEndpoint.setApiRegistryId(100L);
+
+        when(apiEndpointRepository.existsByApiCodeAndDataStateNot(anyString(), eq(DataStateCode.D)))
+                .thenReturn(false);
+        when(apiEndpointMapper.toEntity(any(ApiEndpointDTO.class))).thenReturn(testEndpoint);
+        when(registryMatchingService.findMatchingApiRegistryId("/api/users/{id}", "GET"))
+                .thenReturn(100L);
+        when(apiEndpointRepository.save(any(ApiEndpoint.class))).thenReturn(testEndpoint);
+        when(apiEndpointMapper.toDto(any(ApiEndpoint.class))).thenReturn(testEndpointDTO);
+
+        // When
+        ApiEndpointDTO result = apiEndpointService.createApiEndpoint(testEndpointDTO);
+
+        // Then
+        assertThat(result).isNotNull();
+        verify(registryMatchingService, times(1))
+                .findMatchingApiRegistryId("/api/users/{id}", "GET");
+        verify(apiEndpointRepository, times(1)).save(any(ApiEndpoint.class));
+    }
+
+    @Test
+    @DisplayName("내부 API 생성 시 ApiRegistry 매핑 실패")
+    void createApiEndpoint_InternalApi_MappingFailed_ThrowsException() {
+        // Given
+        testEndpointDTO.setIsInternal(true);
+        testEndpointDTO.setTargetUrl("/api/nonexistent");
+        testEndpointDTO.setHttpMethod("GET");
+
+        testEndpoint.setIsInternal(true);
+        testEndpoint.setTargetUrl("/api/nonexistent");
+        testEndpoint.setHttpMethod("GET");
+
+        when(apiEndpointRepository.existsByApiCodeAndDataStateNot(anyString(), eq(DataStateCode.D)))
+                .thenReturn(false);
+        when(apiEndpointMapper.toEntity(any(ApiEndpointDTO.class))).thenReturn(testEndpoint);
+        when(registryMatchingService.findMatchingApiRegistryId("/api/nonexistent", "GET"))
+                .thenThrow(new ProxyException(ProxyExceptionMessage.API_REGISTRY_NOT_FOUND));
+
+        // When & Then
+        assertThatThrownBy(() -> apiEndpointService.createApiEndpoint(testEndpointDTO))
+                .isInstanceOf(ProxyException.class)
+                .hasMessageContaining(ProxyExceptionMessage.API_REGISTRY_NOT_FOUND.getMessage());
+
+        verify(registryMatchingService, times(1))
+                .findMatchingApiRegistryId("/api/nonexistent", "GET");
+        verify(apiEndpointRepository, never()).save(any(ApiEndpoint.class));
+    }
+
+    @Test
+    @DisplayName("외부 API 생성 시 ApiRegistry 매핑 안 함")
+    void createApiEndpoint_ExternalApi_NoMapping() {
+        // Given
+        testEndpointDTO.setIsInternal(false);
+        testEndpointDTO.setTargetUrl("https://external.api.com/test");
+
+        when(apiEndpointRepository.existsByApiCodeAndDataStateNot(anyString(), eq(DataStateCode.D)))
+                .thenReturn(false);
+        when(apiEndpointMapper.toEntity(any(ApiEndpointDTO.class))).thenReturn(testEndpoint);
+        when(apiEndpointRepository.save(any(ApiEndpoint.class))).thenReturn(testEndpoint);
+        when(apiEndpointMapper.toDto(any(ApiEndpoint.class))).thenReturn(testEndpointDTO);
+
+        // When
+        ApiEndpointDTO result = apiEndpointService.createApiEndpoint(testEndpointDTO);
+
+        // Then
+        assertThat(result).isNotNull();
+        verify(registryMatchingService, never()).findMatchingApiRegistryId(anyString(), anyString());
+        verify(apiEndpointRepository, times(1)).save(any(ApiEndpoint.class));
+    }
+
+    @Test
+    @DisplayName("내부 API로 전환 시 ApiRegistry 재매핑")
+    void updateApiEndpoint_BecomeInternal_ReMapping() {
+        // Given
+        testEndpoint.setIsInternal(false); // Initially external
+        testEndpoint.setApiRegistryId(null);
+        testEndpoint.setTargetUrl("https://external.com/api");
+        testEndpoint.setHttpMethod("GET");
+
+        testEndpointDTO.setIsInternal(true); // Changing to internal
+        testEndpointDTO.setTargetUrl("/api/users");
+        testEndpointDTO.setHttpMethod("GET");
+
+        when(apiEndpointRepository.findById(anyLong())).thenReturn(Optional.of(testEndpoint));
+
+        // Simulate updateEntityFromDto behavior
+        doAnswer(invocation -> {
+            testEndpoint.setIsInternal(true);
+            testEndpoint.setTargetUrl("/api/users");
+            testEndpoint.setHttpMethod("GET");
+            return null;
+        }).when(apiEndpointMapper).updateEntityFromDto(any(), any());
+
+        when(registryMatchingService.findMatchingApiRegistryId("/api/users", "GET"))
+                .thenReturn(200L);
+        when(apiEndpointRepository.save(any(ApiEndpoint.class))).thenReturn(testEndpoint);
+        when(apiEndpointMapper.toDto(any(ApiEndpoint.class))).thenReturn(testEndpointDTO);
+
+        // When
+        ApiEndpointDTO result = apiEndpointService.updateApiEndpoint(1L, testEndpointDTO);
+
+        // Then
+        assertThat(result).isNotNull();
+        verify(registryMatchingService, times(1))
+                .findMatchingApiRegistryId("/api/users", "GET");
+    }
+
+    @Test
+    @DisplayName("내부 API URL 변경 시 ApiRegistry 재매핑")
+    void updateApiEndpoint_InternalApi_UrlChanged_ReMapping() {
+        // Given
+        testEndpoint.setIsInternal(true);
+        testEndpoint.setTargetUrl("/api/old/path");
+        testEndpoint.setHttpMethod("GET");
+        testEndpoint.setApiRegistryId(100L);
+
+        testEndpointDTO.setIsInternal(true);
+        testEndpointDTO.setTargetUrl("/api/new/path");
+        testEndpointDTO.setHttpMethod("GET");
+
+        when(apiEndpointRepository.findById(anyLong())).thenReturn(Optional.of(testEndpoint));
+
+        // Simulate updateEntityFromDto behavior
+        doAnswer(invocation -> {
+            testEndpoint.setTargetUrl("/api/new/path");
+            return null;
+        }).when(apiEndpointMapper).updateEntityFromDto(any(), any());
+
+        when(registryMatchingService.findMatchingApiRegistryId("/api/new/path", "GET"))
+                .thenReturn(300L);
+        when(apiEndpointRepository.save(any(ApiEndpoint.class))).thenReturn(testEndpoint);
+        when(apiEndpointMapper.toDto(any(ApiEndpoint.class))).thenReturn(testEndpointDTO);
+
+        // When
+        ApiEndpointDTO result = apiEndpointService.updateApiEndpoint(1L, testEndpointDTO);
+
+        // Then
+        assertThat(result).isNotNull();
+        verify(registryMatchingService, times(1))
+                .findMatchingApiRegistryId("/api/new/path", "GET");
+    }
+
+    @Test
+    @DisplayName("외부 API로 전환 시 ApiRegistry 매핑 제거")
+    void updateApiEndpoint_BecomeExternal_ClearMapping() {
+        // Given
+        testEndpoint.setIsInternal(true);
+        testEndpoint.setTargetUrl("/api/internal");
+        testEndpoint.setHttpMethod("GET");
+        testEndpoint.setApiRegistryId(100L);
+
+        testEndpointDTO.setIsInternal(false); // Changing to external
+        testEndpointDTO.setTargetUrl("https://external.com/api");
+        testEndpointDTO.setHttpMethod("GET");
+
+        when(apiEndpointRepository.findById(anyLong())).thenReturn(Optional.of(testEndpoint));
+
+        // Simulate updateEntityFromDto behavior
+        doAnswer(invocation -> {
+            testEndpoint.setIsInternal(false);
+            testEndpoint.setTargetUrl("https://external.com/api");
+            return null;
+        }).when(apiEndpointMapper).updateEntityFromDto(any(), any());
+
+        when(apiEndpointRepository.save(any(ApiEndpoint.class))).thenAnswer(invocation -> {
+            // Verify that apiRegistryId has been set to null
+            ApiEndpoint saved = invocation.getArgument(0);
+            assertThat(saved.getApiRegistryId()).isNull();
+            return saved;
+        });
+        when(apiEndpointMapper.toDto(any(ApiEndpoint.class))).thenReturn(testEndpointDTO);
+
+        // When
+        ApiEndpointDTO result = apiEndpointService.updateApiEndpoint(1L, testEndpointDTO);
+
+        // Then
+        assertThat(result).isNotNull();
+        verify(registryMatchingService, never()).findMatchingApiRegistryId(anyString(), anyString());
     }
 }

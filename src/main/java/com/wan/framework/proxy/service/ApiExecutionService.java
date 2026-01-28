@@ -36,15 +36,106 @@ public class ApiExecutionService {
     private final ApiExecutionHistoryRepository executionHistoryRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final InternalApiInvoker internalApiInvoker;
+    private final ApiRegistryMatchingService registryMatchingService;
 
     /**
-     * API 실행
+     * API 실행 (내부/외부 자동 분기)
      */
     @Transactional
     public ProxyExecutionResponse execute(ApiEndpoint endpoint, ProxyExecutionRequest request) {
-        log.info("Executing API: {} ({})", endpoint.getApiCode(), endpoint.getApiName());
+        log.info("Executing API: {} ({}), isInternal={}",
+            endpoint.getApiCode(), endpoint.getApiName(), endpoint.getIsInternal());
 
         LocalDateTime startTime = LocalDateTime.now();
+
+        // 내부 API 직접 호출 분기
+        if (Boolean.TRUE.equals(endpoint.getIsInternal()) && endpoint.getApiRegistryId() != null) {
+            return executeInternalApi(endpoint, request, startTime);
+        } else {
+            // 기존 HTTP 호출 로직
+            return executeExternalApi(endpoint, request, startTime);
+        }
+    }
+
+    /**
+     * 내부 API 직접 호출 (NEW)
+     */
+    private ProxyExecutionResponse executeInternalApi(
+            ApiEndpoint endpoint,
+            ProxyExecutionRequest request,
+            LocalDateTime startTime) {
+
+        log.info("Direct invoking internal API: {}", endpoint.getApiCode());
+
+        try {
+            // 1. ApiRegistry 조회
+            var apiRegistry = registryMatchingService.getApiRegistry(
+                endpoint.getApiRegistryId()
+            );
+
+            // 2. 내부 API 직접 호출
+            var invocationResult = internalApiInvoker.invoke(
+                apiRegistry,
+                request.getParameters()
+            );
+
+            // 3. 실행 이력 저장
+            ApiExecutionHistory history = ApiExecutionHistory.builder()
+                .apiEndpointId(endpoint.getId())
+                .apiCode(endpoint.getApiCode())
+                .executedUrl("INTERNAL:" + apiRegistry.getUriPattern())
+                .httpMethod(endpoint.getHttpMethod())
+                .requestBody(objectMapper.writeValueAsString(request.getParameters()))
+                .responseStatusCode(invocationResult.getStatusCode())
+                .responseBody(invocationResult.getResponseBody())
+                .isSuccess(invocationResult.getIsSuccess())
+                .errorMessage(invocationResult.getErrorMessage())
+                .executionTimeMs(invocationResult.getExecutionTimeMs())
+                .retryAttempt(0)
+                .executionTrigger(request.getExecutionTrigger())
+                .executedBy(request.getExecutedBy())
+                .executedAt(LocalDateTime.now())
+                .build();
+
+            ApiExecutionHistory savedHistory = executionHistoryRepository.save(history);
+
+            return buildSuccessResponse(savedHistory);
+
+        } catch (Exception e) {
+            log.error("Internal API invocation failed: {}", e.getMessage(), e);
+
+            long executionTimeMs = Duration.between(startTime, LocalDateTime.now()).toMillis();
+
+            ApiExecutionHistory history = ApiExecutionHistory.builder()
+                .apiEndpointId(endpoint.getId())
+                .apiCode(endpoint.getApiCode())
+                .executedUrl("INTERNAL:ERROR")
+                .httpMethod(endpoint.getHttpMethod())
+                .isSuccess(false)
+                .errorMessage(e.getMessage())
+                .executionTimeMs(executionTimeMs)
+                .retryAttempt(0)
+                .executionTrigger(request.getExecutionTrigger())
+                .executedBy(request.getExecutedBy())
+                .executedAt(LocalDateTime.now())
+                .build();
+
+            ApiExecutionHistory savedHistory = executionHistoryRepository.save(history);
+            return buildFailureResponse(savedHistory);
+        }
+    }
+
+    /**
+     * 외부 API HTTP 호출 (기존 로직 유지)
+     */
+    private ProxyExecutionResponse executeExternalApi(
+            ApiEndpoint endpoint,
+            ProxyExecutionRequest request,
+            LocalDateTime startTime) {
+
+        log.info("HTTP calling external API: {}", endpoint.getApiCode());
+
         int retryAttempt = 0;
         ApiExecutionHistory history = null;
 
