@@ -1,0 +1,39 @@
+# V2 버전 테스트를 위한 Docker 구성
+
+## 1. Docker Compose 설정
+
+### 1.1 docker-compose-test.yml (테스트용)
+```yaml
+version: '3.8'
+
+services:
+  # MariaDB 데이터베이스
+  mariadb:
+    image: mariadb:11.2
+    container_name: v2-test-mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: framework_test
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 5
+
+  # Redis 캐시 서버
+  redis:
+    image: redis:7.2
+    container_name: v2-test-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass redispassword
+
+volumes:
+  mariadb_data:
+```
