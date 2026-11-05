@@ -401,20 +401,6 @@
 
 ---
 
-## 📞 지원
-
-### 문의
-- **백엔드 팀**: GitHub Issues
-- **프론트엔드 지원**: Slack #backend-support
-- **긴급 문의**: PM에게 연락
-
-### 리소스
-- **GitHub Repository**: (URL)
-- **Jira Board**: (URL)
-- **Confluence**: (URL)
-
----
-
 ## 📝 라이선스
 
 이 프로젝트는 내부 사용을 목적으로 합니다.
